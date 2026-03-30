@@ -233,7 +233,9 @@ const Services = {
             <div class="setting-section-title"><i class="fa-solid fa-server"></i> Nginx Ayarları</div>
             <div class="form-group">
                 <label>Dinleme Portu</label>
-                <input type="number" class="form-control" id="nginx-listen-port" value="80" placeholder="80">
+                <input type="number" class="form-control" id="nginx-listen-port" 
+                    value="${svc.default_port}" placeholder="${svc.default_port}"
+                    oninput="document.getElementById('svc-port').value = this.value">
             </div>
             <div class="form-group">
                 <label>Server Name (Domain)</label>
@@ -300,6 +302,12 @@ const Services = {
     _phpSettings(svc) {
         return `
             <div class="setting-section-title"><i class="fa-brands fa-php"></i> PHP-FPM Ayarları</div>
+            <div class="form-group">
+                <label>Dinleme Portu / Soket</label>
+                <input type="text" class="form-control" id="php-listen" 
+                    value="${svc.default_port}" placeholder="9000"
+                    oninput="document.getElementById('svc-port').value = this.value">
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>upload_max_filesize</label>

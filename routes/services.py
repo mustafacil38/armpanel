@@ -2,12 +2,79 @@ import os
 import subprocess
 import shutil
 import psutil
+import re
 from flask import Blueprint, request, jsonify
 from database import get_db
 
 services_bp = Blueprint("services", __name__)
 
 ALLOWED_CONFIG_DIRS = ["/etc/nginx", "/etc/php", "/etc/filebrowser", "/etc/ttyd", "/usr/local/etc"]
+
+
+def _extract_port_from_configs(config_files_str, service_name, fallback_port):
+    if not config_files_str:
+        return fallback_port
+    
+    files = [f.strip() for f in config_files_str.split(",") if f.strip()]
+    for file_path in files:
+        if not os.path.isfile(file_path):
+            continue
+        try:
+            with open(file_path, "r") as f:
+                content = f.read()
+            
+            if service_name.lower() == "nginx":
+                # Matches: listen 80; or listen 80 default_server; or listen [::]:80;
+                match = re.search(r"listen\s+(?:\[::\]:)?(\d+)\s*(?:default_server|ssl|;)", content)
+                if match:
+                    return int(match.group(1))
+            
+            elif service_name.lower() == "php-fpm":
+                # Matches: listen = 127.0.0.1:9000
+                match = re.search(r"listen\s*=\s*(?:.*:)?(\d+)", content)
+                if match:
+                    return int(match.group(1))
+                    
+        except Exception:
+            continue
+    return fallback_port
+
+
+def _update_port_in_configs(config_files_str, service_name, new_port):
+    if not config_files_str:
+        return
+    
+    files = [f.strip() for f in config_files_str.split(",") if f.strip()]
+    for file_path in files:
+        if not os.path.isfile(file_path):
+            continue
+        try:
+            with open(file_path, "r") as f:
+                content = f.read()
+            
+            new_content = content
+            if service_name.lower() == "nginx":
+                # Replace port in 'listen' lines
+                new_content = re.sub(
+                    r"(listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
+                    f"\\1{new_port}\\2",
+                    content
+                )
+            elif service_name.lower() == "php-fpm":
+                # Replace port in 'listen =' lines
+                new_content = re.sub(
+                    r"(listen\s*=\s*(?:.*:)?)\d+",
+                    f"\\1{new_port}",
+                    content
+                )
+            
+            if new_content != content:
+                # Backup and write
+                shutil.copy2(file_path, file_path + ".bak")
+                with open(file_path, "w") as f:
+                    f.write(new_content)
+        except Exception as e:
+            print(f"Error updating config {file_path}: {e}")
 
 
 def _is_config_allowed(path):
@@ -42,6 +109,10 @@ def list_services():
     for row in rows:
         svc = dict(row)
         svc["is_running"] = _is_running(svc["process_name"])
+        # Extract real port from config if possible
+        svc["default_port"] = _extract_port_from_configs(
+            svc["config_files"], svc["name"], svc["default_port"]
+        )
         services.append(svc)
     return jsonify(services)
 
@@ -157,7 +228,12 @@ def get_service_settings(sid):
     if not svc:
         return jsonify({"ok": False, "error": "Service not found"}), 404
 
-    return jsonify({"ok": True, "service": dict(svc)})
+    service_dict = dict(svc)
+    # Get current port from config if available
+    service_dict["default_port"] = _extract_port_from_configs(
+        svc["config_files"], svc["name"], svc["default_port"]
+    )
+    return jsonify({"ok": True, "service": service_dict})
 
 
 @services_bp.route("/api/services/<int:sid>/settings", methods=["POST"])
@@ -173,6 +249,9 @@ def update_service_settings(sid):
                       "default_port", "config_files", "description"]
     updates = []
     values = []
+    
+    new_port = data.get("default_port")
+    
     for field in allowed_fields:
         if field in data:
             updates.append(f"{field} = ?")
@@ -182,6 +261,11 @@ def update_service_settings(sid):
         values.append(sid)
         conn.execute(f"UPDATE services SET {', '.join(updates)} WHERE id = ?", values)
         conn.commit()
+
+        # If port was updated, sync to config files
+        if new_port is not None:
+            config_files = data.get("config_files", svc["config_files"])
+            _update_port_in_configs(config_files, svc["name"], new_port)
 
     conn.close()
     return jsonify({"ok": True, "message": "Ayarlar güncellendi"})
