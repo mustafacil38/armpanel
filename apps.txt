@@ -1,0 +1,15 @@
+[WordPress]
+version=6.4
+command=apt update && apt install -y wget php-mysql && wget https://wordpress.org/latest.tar.gz && tar xzf latest.tar.gz -C /var/www/html/
+
+[Node.js]
+version=20.x
+command=curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt install -y nodejs
+
+[MariaDB]
+version=10.11
+command=apt update && apt install -y mariadb-server && service mariadb start
+
+[Python3 Pip]
+version=3.x
+command=apt update && apt install -y python3-pip
