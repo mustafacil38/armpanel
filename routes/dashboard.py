@@ -52,32 +52,45 @@ def _get_ram_usage_fallback():
     try:
         # Try /proc/meminfo
         meminfo = {}
-        with open("/proc/meminfo", "r") as f:
-            for line in f:
-                parts = line.split(":")
-                if len(parts) == 2:
-                    name = parts[0].strip()
-                    value = parts[1].split()[0].strip()
-                    meminfo[name] = int(value) * 1024  # kB to bytes
+        if os.path.exists("/proc/meminfo"):
+            with open("/proc/meminfo", "r") as f:
+                for line in f:
+                    parts = line.split(":")
+                    if len(parts) == 2:
+                        name = parts[0].strip()
+                        val_parts = parts[1].split()
+                        if val_parts:
+                            meminfo[name] = int(val_parts[0]) * 1024  # kB to bytes
         
         total = meminfo.get("MemTotal", 0)
-        free = meminfo.get("MemFree", 0)
-        buffers = meminfo.get("Buffers", 0)
-        cached = meminfo.get("Cached", 0)
-        used = total - free - buffers - cached
+        # In newer kernels, MemAvailable is provided and is more accurate
+        # than manual subtraction.
+        available = meminfo.get("MemAvailable", -1)
+        
+        if available != -1:
+            used = total - available
+        else:
+            free = meminfo.get("MemFree", 0)
+            buffers = meminfo.get("Buffers", 0)
+            cached = meminfo.get("Cached", 0)
+            used = total - free - buffers - cached
+            
         percent = (used / total * 100) if total > 0 else 0
         return {"total": total, "used": used, "percent": round(percent, 1)}
     except Exception:
-        # Try 'free' command
+        # Try 'free' command as final fallback
         try:
-            res = subprocess.check_output(["free", "-b"]).decode()
+            # -b gives bytes, -w gives wide output (for available column)
+            res = subprocess.check_output(["free", "-bw"]).decode()
             lines = res.splitlines()
             if len(lines) > 1:
                 parts = lines[1].split()
-                total = int(parts[1])
-                used = int(parts[2])
-                percent = (used / total * 100) if total > 0 else 0
-                return {"total": total, "used": used, "percent": round(percent, 1)}
+                if len(parts) >= 7: # Standard free -bw output columns
+                    total = int(parts[1])
+                    available = int(parts[6]) # Available is the 7th col
+                    used = total - available
+                    percent = (used / total * 100) if total > 0 else 0
+                    return {"total": total, "used": used, "percent": round(percent, 1)}
         except Exception:
             pass
     return {"total": 0, "used": 0, "percent": 0}
@@ -85,17 +98,28 @@ def _get_ram_usage_fallback():
 
 def _get_disk_usage_fallback(path="/"):
     try:
-        res = subprocess.check_output(["df", "-b", path]).decode()
-        lines = res.splitlines()
-        if len(lines) > 1:
-            parts = lines[1].split()
-            # On some systems df -b output might shift columns
-            total = int(parts[1])
-            used = int(parts[2])
-            percent = (used / total * 100) if total > 0 else 0
-            return {"total": total, "used": used, "percent": round(percent, 1)}
+        # os.statvfs is a standard system call and very reliable in PRoot
+        st = os.statvfs(path)
+        total = st.f_blocks * st.f_frsize
+        free = st.f_bfree * st.f_frsize
+        used = (st.f_blocks - st.f_bfree) * st.f_frsize
+        percent = (used / total * 100) if total > 0 else 0
+        return {"total": total, "used": used, "percent": round(percent, 1)}
     except Exception:
-        pass
+        # Emergency df parsing
+        try:
+            res = subprocess.check_output(["df", "-B1", path]).decode()
+            lines = res.splitlines()
+            if len(lines) > 1:
+                # df output: Filesystem size used avail capacity mount
+                parts = lines[1].split()
+                if len(parts) >= 3:
+                    total = int(parts[1])
+                    used = int(parts[2])
+                    percent = (used / total * 100) if total > 0 else 0
+                    return {"total": total, "used": used, "percent": round(percent, 1)}
+        except Exception:
+            pass
     return {"total": 0, "used": 0, "percent": 0}
 
 
@@ -128,7 +152,8 @@ def stats():
     except Exception:
         ram_total = ram_used = ram_percent = 0
     
-    if ram_total == 0:
+    # Eger ram_total 0 ise veya cok kucukse (PRoot hatasi olabilir)
+    if ram_total < 1024 * 1024:
         fallback = _get_ram_usage_fallback()
         ram_total = fallback["total"]
         ram_used = fallback["used"]
@@ -143,7 +168,8 @@ def stats():
     except Exception:
         disk_total = disk_used = disk_percent = 0
     
-    if disk_total == 0:
+    # PRoot ortaminda disk_total genelde 0 gelir veya hata verir
+    if disk_total < 1024 * 1024:
         fallback = _get_disk_usage_fallback("/")
         disk_total = fallback["total"]
         disk_used = fallback["used"]
