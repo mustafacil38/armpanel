@@ -239,30 +239,15 @@ const Services = {
             </div>
             <div class="form-group">
                 <label>Server Name (Domain)</label>
-                <div class="domain-list" id="domain-list">
-                    <div class="domain-item">
-                        <span class="domain-name">localhost</span>
-                        <button class="btn-remove" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                </div>
-                <div class="domain-add">
-                    <input type="text" class="form-control" id="new-domain" placeholder="example.com">
-                    <button class="btn-sm btn-start" onclick="Services._addDomain()">
-                        <i class="fa-solid fa-plus"></i> Ekle
-                    </button>
-                </div>
+                <input type="text" class="form-control" id="nginx-server-name" value="${this._escAttr(svc.server_name || 'localhost')}">
             </div>
             <div class="form-group">
                 <label>Root Dizin</label>
-                <input type="text" class="form-control" value="/var/www/html" placeholder="/var/www/html">
+                <input type="text" class="form-control" id="nginx-root-dir" value="${this._escAttr(svc.root_dir || '/var/www/html')}">
             </div>
             <div class="form-group">
                 <label>Worker Processes</label>
-                <input type="number" class="form-control" value="auto" placeholder="auto">
-            </div>
-            <div class="form-group">
-                <label>Client Max Body Size</label>
-                <input type="text" class="form-control" value="50M" placeholder="50M">
+                <input type="text" class="form-control" id="nginx-workers" value="${this._escAttr(svc.worker_processes || 'auto')}">
             </div>
         `;
     },
@@ -311,73 +296,32 @@ const Services = {
             <div class="form-row">
                 <div class="form-group">
                     <label>upload_max_filesize</label>
-                    <input type="text" class="form-control" value="64M" placeholder="64M">
+                    <input type="text" class="form-control" id="php-upload-limit" value="${svc.upload_max_filesize || '2M'}">
                 </div>
                 <div class="form-group">
                     <label>post_max_size</label>
-                    <input type="text" class="form-control" value="64M" placeholder="64M">
+                    <input type="text" class="form-control" id="php-post-limit" value="${svc.post_max_size || '8M'}">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>memory_limit</label>
-                    <input type="text" class="form-control" value="256M" placeholder="256M">
+                    <input type="text" class="form-control" id="php-mem-limit" value="${svc.memory_limit || '128M'}">
                 </div>
                 <div class="form-group">
                     <label>max_execution_time</label>
-                    <input type="number" class="form-control" value="120" placeholder="120">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>display_errors</label>
-                    <select class="form-control">
-                        <option value="On">On</option>
-                        <option value="Off" selected>Off</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>error_reporting</label>
-                    <select class="form-control">
-                        <option value="E_ALL" selected>E_ALL</option>
-                        <option value="E_ALL & ~E_NOTICE">E_ALL & ~E_NOTICE</option>
-                        <option value="E_ERROR">E_ERROR</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>max_input_vars</label>
-                    <input type="number" class="form-control" value="1000" placeholder="1000">
-                </div>
-                <div class="form-group">
-                    <label>date.timezone</label>
-                    <input type="text" class="form-control" value="Europe/Istanbul" placeholder="Europe/Istanbul">
+                    <input type="number" class="form-control" id="php-exec-time" value="${svc.max_execution_time || '30'}">
                 </div>
             </div>
             <div class="setting-section-title"><i class="fa-solid fa-water"></i> FPM Havuz Ayarları</div>
             <div class="form-row">
                 <div class="form-group">
                     <label>pm (Process Manager)</label>
-                    <select class="form-control">
-                        <option value="dynamic" selected>dynamic</option>
-                        <option value="static">static</option>
-                        <option value="ondemand">ondemand</option>
-                    </select>
+                    <input type="text" class="form-control" id="php-pm" value="${svc.pm || 'dynamic'}">
                 </div>
                 <div class="form-group">
                     <label>pm.max_children</label>
-                    <input type="number" class="form-control" value="5" placeholder="5">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>pm.start_servers</label>
-                    <input type="number" class="form-control" value="2" placeholder="2">
-                </div>
-                <div class="form-group">
-                    <label>pm.min_spare_servers</label>
-                    <input type="number" class="form-control" value="1" placeholder="1">
+                    <input type="number" class="form-control" id="php-pm-max" value="${svc['pm.max_children'] || '5'}">
                 </div>
             </div>
         `;
@@ -423,15 +367,30 @@ const Services = {
     async saveSettings() {
         const form = document.getElementById('svc-settings-form');
         const id = form.dataset.id;
+        const svcName = App.getModalTitle().toLowerCase();
 
         const data = {
             description: document.getElementById('svc-desc').value,
-            default_port: parseInt(document.getElementById('svc-port').value) || 0,
+            default_port: document.getElementById('svc-port').value,
             command_start: document.getElementById('svc-cmd-start').value,
             command_stop: document.getElementById('svc-cmd-stop').value,
             command_restart: document.getElementById('svc-cmd-restart').value,
             config_files: document.getElementById('svc-configs').value,
         };
+
+        // Add service-specific settings
+        if (svcName.includes('nginx')) {
+            data.server_name = document.getElementById('nginx-server-name').value;
+            data.root_dir = document.getElementById('nginx-root-dir').value;
+            data.worker_processes = document.getElementById('nginx-workers').value;
+        } else if (svcName.includes('php')) {
+            data.upload_max_filesize = document.getElementById('php-upload-limit').value;
+            data.post_max_size = document.getElementById('php-post-limit').value;
+            data.memory_limit = document.getElementById('php-mem-limit').value;
+            data.max_execution_time = document.getElementById('php-exec-time').value;
+            data.pm = document.getElementById('php-pm').value;
+            data['pm.max_children'] = document.getElementById('php-pm-max').value;
+        }
 
         const result = await App.api(`/api/services/${id}/settings`, {
             method: 'POST',

@@ -11,40 +11,88 @@ services_bp = Blueprint("services", __name__)
 ALLOWED_CONFIG_DIRS = ["/etc/nginx", "/etc/php", "/etc/filebrowser", "/etc/ttyd", "/usr/local/etc"]
 
 
-def _extract_port_from_configs(config_files_str, service_name, fallback_port):
+def _get_all_configs_content(config_files_str):
     if not config_files_str:
-        return fallback_port
+        return ""
     
+    combined_content = ""
     files = [f.strip() for f in config_files_str.split(",") if f.strip()]
     for file_path in files:
-        if not os.path.isfile(file_path):
-            continue
-        try:
-            with open(file_path, "r") as f:
-                content = f.read()
-            
-            if service_name.lower() == "nginx":
-                # Matches: listen 80; or listen 80 default_server; or listen [::]:80;
-                match = re.search(r"listen\s+(?:\[::\]:)?(\d+)\s*(?:default_server|ssl|;)", content)
-                if match:
-                    return int(match.group(1))
-            
-            elif service_name.lower() == "php-fpm":
-                # Matches: listen = 127.0.0.1:9000
-                match = re.search(r"listen\s*=\s*(?:.*:)?(\d+)", content)
-                if match:
-                    return int(match.group(1))
-                    
-        except Exception:
-            continue
-    return fallback_port
+        if os.path.isfile(file_path):
+            try:
+                with open(file_path, "r") as f:
+                    combined_content += f"\n# --- FILE: {file_path} ---\n"
+                    combined_content += f.read()
+            except Exception:
+                continue
+    return combined_content
 
 
-def _update_port_in_configs(config_files_str, service_name, new_port):
+def _extract_all_settings_from_configs(svc_name, config_files_str, current_db_stats):
+    content = _get_all_configs_content(config_files_str)
+    if not content:
+        return current_db_stats
+    
+    settings = current_db_stats.copy()
+    svc_name_lower = svc_name.lower()
+    
+    if "nginx" in svc_name_lower:
+        # Port
+        match = re.search(r"listen\s+(?:\[::\]:)?(\d+)\s*(?:default_server|ssl|;)", content)
+        if match:
+            settings["default_port"] = int(match.group(1))
+        
+        # Root
+        match = re.search(r"root\s+([^;]+);", content)
+        if match:
+            settings["root_dir"] = match.group(1).strip()
+            
+        # Server Name
+        match = re.search(r"server_name\s+([^;]+);", content)
+        if match:
+            settings["server_name"] = match.group(1).strip()
+            
+        # Worker Processes
+        match = re.search(r"worker_processes\s+([^;]+);", content)
+        if match:
+            settings["worker_processes"] = match.group(1).strip()
+
+    elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
+        # Port / Listen
+        match = re.search(r"listen\s*=\s*([^ \n]+)", content)
+        if match:
+            val = match.group(1).strip()
+            if ":" in val:
+                settings["default_port"] = val.split(":")[-1]
+            else:
+                settings["default_port"] = val
+        
+        # PHP INI settings
+        patterns = {
+            "upload_max_filesize": r"upload_max_filesize\s*=\s*(.+)",
+            "post_max_size": r"post_max_size\s*=\s*(.+)",
+            "memory_limit": r"memory_limit\s*=\s*(.+)",
+            "max_execution_time": r"max_execution_time\s*=\s*(.+)",
+            "display_errors": r"display_errors\s*=\s*(.+)",
+            "pm": r"pm\s*=\s*(.+)",
+            "pm.max_children": r"pm\.max_children\s*=\s*(\d+)",
+            "pm.start_servers": r"pm\.start_servers\s*=\s*(\d+)",
+        }
+        for key, pattern in patterns.items():
+            match = re.search(pattern, content)
+            if match:
+                settings[key] = match.group(1).strip()
+                
+    return settings
+
+
+def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
     if not config_files_str:
         return
     
     files = [f.strip() for f in config_files_str.split(",") if f.strip()]
+    svc_name_lower = svc_name.lower()
+    
     for file_path in files:
         if not os.path.isfile(file_path):
             continue
@@ -53,26 +101,52 @@ def _update_port_in_configs(config_files_str, service_name, new_port):
                 content = f.read()
             
             new_content = content
-            if service_name.lower() == "nginx":
-                # Replace port in 'listen' lines
-                new_content = re.sub(
-                    r"(listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
-                    f"\\1{new_port}\\2",
-                    content
-                )
-            elif service_name.lower() == "php-fpm":
-                # Replace port in 'listen =' lines
-                new_content = re.sub(
-                    r"(listen\s*=\s*(?:.*:)?)\d+",
-                    f"\\1{new_port}",
-                    content
-                )
+            
+            if "nginx" in svc_name_lower:
+                # Port
+                if "default_port" in new_settings:
+                    new_content = re.sub(
+                        r"(listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
+                        f"\\1{new_settings['default_port']}\\2",
+                        new_content
+                    )
+                # Root
+                if "root_dir" in new_settings:
+                    new_content = re.sub(
+                        r"(root\s+)[^;]+(;)",
+                        f"\\1{new_settings['root_dir']}\\2",
+                        new_content
+                    )
+                # Server Name
+                if "server_name" in new_settings:
+                    new_content = re.sub(
+                        r"(server_name\s+)[^;]+(;)",
+                        f"\\1{new_settings['server_name']}\\2",
+                        new_content
+                    )
+            
+            elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
+                # Port
+                if "default_port" in new_settings:
+                    new_content = re.sub(
+                        r"(listen\s*=\s*(?:.*:)?)\d+",
+                        f"\\1{new_settings['default_port']}",
+                        new_content
+                    )
+                # PHP/FPM settings
+                for key, val in new_settings.items():
+                    if key in ["default_port", "config_files", "description", "sid"]: continue
+                    new_content = re.sub(
+                        rf"({re.escape(key)}\s*=\s*).+",
+                        f"\\1{val}",
+                        new_content
+                    )
             
             if new_content != content:
-                # Backup and write
-                shutil.copy2(file_path, file_path + ".bak")
+                # Write directly without backup as requested
                 with open(file_path, "w") as f:
                     f.write(new_content)
+                    
         except Exception as e:
             print(f"Error updating config {file_path}: {e}")
 
@@ -109,9 +183,9 @@ def list_services():
     for row in rows:
         svc = dict(row)
         svc["is_running"] = _is_running(svc["process_name"])
-        # Extract real port from config if possible
-        svc["default_port"] = _extract_port_from_configs(
-            svc["config_files"], svc["name"], svc["default_port"]
+        # Extract real settings from all relevant configs
+        svc = _extract_all_settings_from_configs(
+            svc["name"], svc["config_files"], svc
         )
         services.append(svc)
     return jsonify(services)
@@ -229,9 +303,9 @@ def get_service_settings(sid):
         return jsonify({"ok": False, "error": "Service not found"}), 404
 
     service_dict = dict(svc)
-    # Get current port from config if available
-    service_dict["default_port"] = _extract_port_from_configs(
-        svc["config_files"], svc["name"], svc["default_port"]
+    # Extract real settings from all relevant configs
+    service_dict = _extract_all_settings_from_configs(
+        svc["name"], svc["config_files"], service_dict
     )
     return jsonify({"ok": True, "service": service_dict})
 
@@ -245,14 +319,13 @@ def update_service_settings(sid):
         conn.close()
         return jsonify({"ok": False, "error": "Service not found"}), 404
 
-    allowed_fields = ["command_start", "command_stop", "command_restart",
-                      "default_port", "config_files", "description"]
+    # Standard DB fields
+    allowed_db_fields = ["command_start", "command_stop", "command_restart",
+                         "default_port", "config_files", "description"]
     updates = []
     values = []
     
-    new_port = data.get("default_port")
-    
-    for field in allowed_fields:
+    for field in allowed_db_fields:
         if field in data:
             updates.append(f"{field} = ?")
             values.append(data[field])
@@ -262,10 +335,9 @@ def update_service_settings(sid):
         conn.execute(f"UPDATE services SET {', '.join(updates)} WHERE id = ?", values)
         conn.commit()
 
-        # If port was updated, sync to config files
-        if new_port is not None:
-            config_files = data.get("config_files", svc["config_files"])
-            _update_port_in_configs(config_files, svc["name"], new_port)
+    # Sync all received settings to config files
+    config_files = data.get("config_files", svc["config_files"])
+    _update_all_settings_in_configs(svc["name"], config_files, data)
 
     conn.close()
     return jsonify({"ok": True, "message": "Ayarlar güncellendi"})
