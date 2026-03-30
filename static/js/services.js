@@ -367,29 +367,33 @@ const Services = {
     async saveSettings() {
         const form = document.getElementById('svc-settings-form');
         const id = form.dataset.id;
-        const svcName = App.getModalTitle().toLowerCase();
-
+        
+        // Ana ayarlar (Her zaman var olanlar)
         const data = {
-            description: document.getElementById('svc-desc').value,
-            default_port: document.getElementById('svc-port').value,
-            command_start: document.getElementById('svc-cmd-start').value,
-            command_stop: document.getElementById('svc-cmd-stop').value,
-            command_restart: document.getElementById('svc-cmd-restart').value,
-            config_files: document.getElementById('svc-configs').value,
+            description: document.getElementById('svc-desc')?.value || '',
+            default_port: document.getElementById('svc-port')?.value || '',
+            command_start: document.getElementById('svc-cmd-start')?.value || '',
+            command_stop: document.getElementById('svc-cmd-stop')?.value || '',
+            command_restart: document.getElementById('svc-cmd-restart')?.value || '',
+            config_files: document.getElementById('svc-configs')?.value || '',
         };
 
-        // Add service-specific settings
-        if (svcName.includes('nginx')) {
-            data.server_name = document.getElementById('nginx-server-name').value;
-            data.root_dir = document.getElementById('nginx-root-dir').value;
-            data.worker_processes = document.getElementById('nginx-workers').value;
-        } else if (svcName.includes('php')) {
-            data.upload_max_filesize = document.getElementById('php-upload-limit').value;
-            data.post_max_size = document.getElementById('php-post-limit').value;
-            data.memory_limit = document.getElementById('php-mem-limit').value;
-            data.max_execution_time = document.getElementById('php-exec-time').value;
-            data.pm = document.getElementById('php-pm').value;
-            data['pm.max_children'] = document.getElementById('php-pm-max').value;
+        // Servis spesifik ayarlar (Sadece ekranda varsa ekle)
+        const nginxServerName = document.getElementById('nginx-server-name');
+        if (nginxServerName) {
+            data.server_name = nginxServerName.value;
+            data.root_dir = document.getElementById('nginx-root-dir')?.value || '';
+            data.worker_processes = document.getElementById('nginx-workers')?.value || '';
+        }
+
+        const phpUpload = document.getElementById('php-upload-limit');
+        if (phpUpload) {
+            data.upload_max_filesize = phpUpload.value;
+            data.post_max_size = document.getElementById('php-post-limit')?.value || '';
+            data.memory_limit = document.getElementById('php-mem-limit')?.value || '';
+            data.max_execution_time = document.getElementById('php-exec-time')?.value || '';
+            data.pm = document.getElementById('php-pm')?.value || '';
+            data['pm.max_children'] = document.getElementById('php-pm-max')?.value || '';
         }
 
         const result = await App.api(`/api/services/${id}/settings`, {
