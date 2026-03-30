@@ -3,54 +3,196 @@ import platform
 import socket
 import time
 import psutil
+import subprocess
 from flask import Blueprint, jsonify
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
-_boot_time = psutil.boot_time()
-_prev_net = psutil.net_io_counters()
+_boot_time = time.time() # Default
+try:
+    _boot_time = psutil.boot_time()
+except Exception:
+    pass
+
+try:
+    _prev_net = psutil.net_io_counters()
+except Exception:
+    _prev_net = None
+    print("Uyarı: Ağ istatistiklerine erişilemedi, bu özellik devre dışı.")
 _prev_time = time.time()
 
 
-def _read_file(path):
+def _read_file(path, default="N/A"):
     try:
-        with open(path, "r") as f:
-            return f.read().strip()
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return f.read().strip()
     except Exception:
-        return "N/A"
+        pass
+    return default
 
+
+def _get_cpu_usage_fallback():
+    try:
+        # Read /proc/stat
+        with open("/proc/stat", "r") as f:
+            line = f.readline()
+        parts = line.split()
+        if len(parts) < 5:
+            return 0.0
+        # idle is parts[4], total is sum of all parts
+        idle = float(parts[4])
+        total = sum(float(x) for x in parts[1:])
+        return (idle, total)
+    except Exception:
+        return (0, 0)
+
+
+def _get_ram_usage_fallback():
+    try:
+        # Try /proc/meminfo
+        meminfo = {}
+        with open("/proc/meminfo", "r") as f:
+            for line in f:
+                parts = line.split(":")
+                if len(parts) == 2:
+                    name = parts[0].strip()
+                    value = parts[1].split()[0].strip()
+                    meminfo[name] = int(value) * 1024  # kB to bytes
+        
+        total = meminfo.get("MemTotal", 0)
+        free = meminfo.get("MemFree", 0)
+        buffers = meminfo.get("Buffers", 0)
+        cached = meminfo.get("Cached", 0)
+        used = total - free - buffers - cached
+        percent = (used / total * 100) if total > 0 else 0
+        return {"total": total, "used": used, "percent": round(percent, 1)}
+    except Exception:
+        # Try 'free' command
+        try:
+            res = subprocess.check_output(["free", "-b"]).decode()
+            lines = res.splitlines()
+            if len(lines) > 1:
+                parts = lines[1].split()
+                total = int(parts[1])
+                used = int(parts[2])
+                percent = (used / total * 100) if total > 0 else 0
+                return {"total": total, "used": used, "percent": round(percent, 1)}
+        except Exception:
+            pass
+    return {"total": 0, "used": 0, "percent": 0}
+
+
+def _get_disk_usage_fallback(path="/"):
+    try:
+        res = subprocess.check_output(["df", "-b", path]).decode()
+        lines = res.splitlines()
+        if len(lines) > 1:
+            parts = lines[1].split()
+            # On some systems df -b output might shift columns
+            total = int(parts[1])
+            used = int(parts[2])
+            percent = (used / total * 100) if total > 0 else 0
+            return {"total": total, "used": used, "percent": round(percent, 1)}
+    except Exception:
+        pass
+    return {"total": 0, "used": 0, "percent": 0}
+
+
+_last_cpu_stats = _get_cpu_usage_fallback()
 
 @dashboard_bp.route("/api/dashboard/stats", methods=["GET"])
 def stats():
-    global _prev_net, _prev_time
+    global _prev_net, _prev_time, _last_cpu_stats
 
-    cpu_percent = psutil.cpu_percent(interval=0.5)
-    mem = psutil.virtual_memory()
-    disk = psutil.disk_usage("/")
+    # CPU
+    try:
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+    except Exception:
+        cpu_percent = 0.0
+    
+    if cpu_percent == 0: # Fallback
+        new_stats = _get_cpu_usage_fallback()
+        idle_diff = new_stats[0] - _last_cpu_stats[0]
+        total_diff = new_stats[1] - _last_cpu_stats[1]
+        if total_diff > 0:
+            cpu_percent = round(100 * (1 - idle_diff / total_diff), 1)
+        _last_cpu_stats = new_stats
 
-    cur_net = psutil.net_io_counters()
-    cur_time = time.time()
-    dt = cur_time - _prev_time if cur_time - _prev_time > 0 else 1
+    # RAM
+    try:
+        mem = psutil.virtual_memory()
+        ram_total = mem.total
+        ram_used = mem.used
+        ram_percent = mem.percent
+    except Exception:
+        ram_total = ram_used = ram_percent = 0
+    
+    if ram_total == 0:
+        fallback = _get_ram_usage_fallback()
+        ram_total = fallback["total"]
+        ram_used = fallback["used"]
+        ram_percent = fallback["percent"]
 
-    net_up_speed = (cur_net.bytes_sent - _prev_net.bytes_sent) / dt
-    net_down_speed = (cur_net.bytes_recv - _prev_net.bytes_recv) / dt
+    # DISK
+    try:
+        disk = psutil.disk_usage("/")
+        disk_total = disk.total
+        disk_used = disk.used
+        disk_percent = disk.percent
+    except Exception:
+        disk_total = disk_used = disk_percent = 0
+    
+    if disk_total == 0:
+        fallback = _get_disk_usage_fallback("/")
+        disk_total = fallback["total"]
+        disk_used = fallback["used"]
+        disk_percent = fallback["percent"]
 
-    _prev_net = cur_net
-    _prev_time = cur_time
+    # NET
+    net_up_speed = 0
+    net_down_speed = 0
+    cur_net_sent = 0
+    cur_net_recv = 0
+    
+    try:
+        cur_net = psutil.net_io_counters()
+        cur_time = time.time()
+        dt = cur_time - _prev_time if cur_time - _prev_time > 0 else 1
 
-    uptime = int(time.time() - _boot_time)
+        if _prev_net:
+            net_up_speed = (cur_net.bytes_sent - _prev_net.bytes_sent) / dt
+            net_down_speed = (cur_net.bytes_recv - _prev_net.bytes_recv) / dt
+        
+        _prev_net = cur_net
+        _prev_time = cur_time
+        cur_net_sent = cur_net.bytes_sent
+        cur_net_recv = cur_net.bytes_recv
+    except Exception:
+        pass
+
+    # UPTIME
+    try:
+        uptime = int(time.time() - _boot_time)
+    except Exception:
+        uptime = 0
+        up_str = _read_file("/proc/uptime", "0 0")
+        try:
+            uptime = int(float(up_str.split()[0]))
+        except Exception:
+            pass
 
     return jsonify({
         "cpu_percent": round(cpu_percent, 1),
-        "cpu_count": psutil.cpu_count(logical=True),
-        "ram_total": mem.total,
-        "ram_used": mem.used,
-        "ram_percent": round(mem.percent, 1),
-        "disk_total": disk.total,
-        "disk_used": disk.used,
-        "disk_percent": round(disk.percent, 1),
-        "net_sent": cur_net.bytes_sent,
-        "net_recv": cur_net.bytes_recv,
+        "cpu_count": psutil.cpu_count(logical=True) or 1,
+        "ram_total": ram_total,
+        "ram_used": ram_used,
+        "ram_percent": round(ram_percent, 1),
+        "disk_total": disk_total,
+        "disk_used": disk_used,
+        "disk_percent": round(disk_percent, 1),
+        "net_sent": cur_net_sent,
+        "net_recv": cur_net_recv,
         "net_up_speed": round(net_up_speed),
         "net_down_speed": round(net_down_speed),
         "uptime": uptime,
@@ -91,16 +233,24 @@ def system_info():
     except Exception:
         pass
 
+    # Total RAM/Disk for system info
+    try:
+        ram_total = psutil.virtual_memory().total
+        disk_total = psutil.disk_usage("/").total
+    except Exception:
+        ram_total = _get_ram_usage_fallback()["total"]
+        disk_total = _get_disk_usage_fallback()["total"]
+
     return jsonify({
         "hostname": uname.node,
         "kernel": f"{uname.system} {uname.release}",
         "os_version": pretty_name,
         "processor": cpu_model,
         "architecture": uname.machine,
-        "cpu_cores": psutil.cpu_count(logical=True),
+        "cpu_cores": psutil.cpu_count(logical=True) or 1,
         "cpu_physical": psutil.cpu_count(logical=False) or "N/A",
         "ip_address": ip_addr,
         "python_version": platform.python_version(),
-        "ram_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
-        "disk_total_gb": round(psutil.disk_usage("/").total / (1024**3), 2),
+        "ram_total_gb": round(ram_total / (1024**3), 2),
+        "disk_total_gb": round(disk_total / (1024**3), 2),
     })
