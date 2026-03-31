@@ -54,7 +54,7 @@ const Services = {
                 </div>
                 <div class="svc-info">
                     <div class="svc-name">${svc.name}</div>
-                    <div class="svc-desc">${svc.description} — Port: ${svc.default_port}</div>
+                    <div class="svc-desc">${svc.description} — Servise Git: <a href="http://{local_ip}:${svc.default_port}" target="_blank">Link</a></div>
                     <div class="svc-actions">
                         ${svc.is_running
                 ? `<button class="btn-sm btn-stop" onclick="Services.action(${svc.id},'stop')"><i class="fa-solid fa-stop"></i> Durdur</button>

@@ -11,6 +11,19 @@ services_bp = Blueprint("services", __name__)
 ALLOWED_CONFIG_DIRS = ["/etc/nginx", "/etc/php", "/etc/filebrowser", "/etc/ttyd", "/usr/local/etc"]
 
 
+def get_local_ip():
+    try:
+        # Create a dummy socket to find the local IP address used for outbound connections
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # 8.8.8.8 is Google's public DNS, but we don't actually need to connect
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
 def _get_all_configs_content(config_files_str):
     if not config_files_str:
         return ""
