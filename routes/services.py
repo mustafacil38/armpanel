@@ -120,7 +120,7 @@ def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
                 # Nginx Settings Map (All files searched for these)
                 # Group 1: Prefix, Group 2: Suffix
                 nginx_patterns = {
-                    "default_port": (r"(^\s*listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))", True),
+                    "default_port": (r"(^\s*listen\s+(?:\[::\]:)?)\d+([^;]*;)", True),
                     "root_dir": (r"(^\s*root\s+)[^;]+(;)", True),
                     "server_name": (r"(^\s*server_name\s+)[^;]+(;)", True),
                     "worker_processes": (r"(^\s*worker_processes\s+)[^;]+(;)", True),
@@ -128,12 +128,9 @@ def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
                 }
                 
                 for key, (pattern, use_suffix) in nginx_patterns.items():
-                    val = new_settings.get(key) if key != "default_port" else new_settings.get("default_port")
-                    if val is not None:
-                        if use_suffix:
-                            new_content = re.sub(pattern, f"\\1{val}\\2", new_content, flags=re.MULTILINE)
-                        else:
-                            new_content = re.sub(pattern, f"\\1{val}", new_content, flags=re.MULTILINE)
+                    val = new_settings.get(key)
+                    if val is not None and val != "":
+                        new_content = re.sub(pattern, f"\\1{val}\\2", new_content, flags=re.MULTILINE)
             
             elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
                 # Port / Listen
