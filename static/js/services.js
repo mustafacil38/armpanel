@@ -6,9 +6,14 @@ const Services = {
     async render(container) {
         container.innerHTML = `
             <div class="fade-in">
-                <div class="page-header">
-                    <h2><i class="fa-solid fa-cubes" style="background:var(--gradient-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></i> Servis Yönetimi</h2>
-                    <p>Sistem servislerini izleyin ve yönetin</p>
+                <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+                    <div>
+                        <h2><i class="fa-solid fa-cubes" style="background:var(--gradient-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></i> Servis Yönetimi</h2>
+                        <p>Sistem servislerini izleyin ve yönetin</p>
+                    </div>
+                    <button class="btn-primary" onclick="Services.openAddModal()" style="padding: 10px 20px;">
+                        <i class="fa-solid fa-plus"></i> Servis Ekle
+                    </button>
                 </div>
                 <div id="services-list" class="grid-1">
                     <div class="page-loading"><div class="loading-spinner"></div></div>
@@ -467,6 +472,87 @@ const Services = {
         } catch (e) {
             checkbox.checked = !checkbox.checked;
             App.toast('Bağlantı hatası', 'error');
+        }
+    },
+
+    // ── Add Service Modal ──
+    openAddModal() {
+        const html = `
+            <div id="add-service-form" style="padding: 5px;">
+                <div class="form-group">
+                    <label>Servis Adı <span style="color:var(--accent-red)">*</span></label>
+                    <input type="text" class="form-control" id="add-svc-name" placeholder="Örn: MyService">
+                </div>
+                <div class="form-group">
+                    <label>Açıklama</label>
+                    <input type="text" class="form-control" id="add-svc-desc" placeholder="Servis hakkında kısa bilgi">
+                </div>
+                <div class="form-group">
+                    <label>Başlatma Komutu <span style="color:var(--accent-red)">*</span></label>
+                    <input type="text" class="form-control" id="add-svc-cmd-start" placeholder="Örn: python app.py">
+                </div>
+                <div class="form-group">
+                    <label>Durdurma Komutu <span style="color:var(--accent-red)">*</span></label>
+                    <input type="text" class="form-control" id="add-svc-cmd-stop" placeholder="Örn: pkill -f app.py">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Yeniden Başlatma Komutu</label>
+                        <input type="text" class="form-control" id="add-svc-cmd-restart" placeholder="İsteğe bağlı">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Varsayılan Port (Opsiyonel)</label>
+                        <input type="number" class="form-control" id="add-svc-port" placeholder="Örn: 8080">
+                    </div>
+                    <div class="form-group">
+                        <label>İşlem Adı (Takip için) <span style="color:var(--accent-red)">*</span></label>
+                        <input type="text" class="form-control" id="add-svc-proc" placeholder="Örn: python">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Yapılandırma Dosyaları (Virgülle ayırın)</label>
+                    <input type="text" class="form-control" id="add-svc-configs" placeholder="Örn: /etc/nginx/nginx.conf">
+                </div>
+                <div style="margin-top:20px; display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="Services.createService()" style="flex: 1;">
+                        <i class="fa-solid fa-plus"></i> Servisi Oluştur
+                    </button>
+                </div>
+            </div>
+        `;
+        App.openModal('Yeni Servis Ekle', html);
+    },
+
+    async createService() {
+        const data = {
+            name: document.getElementById('add-svc-name').value.trim(),
+            description: document.getElementById('add-svc-desc').value.trim(),
+            command_start: document.getElementById('add-svc-cmd-start').value.trim(),
+            command_stop: document.getElementById('add-svc-cmd-stop').value.trim(),
+            command_restart: document.getElementById('add-svc-cmd-restart').value.trim(),
+            default_port: document.getElementById('add-svc-port').value.trim(),
+            process_name: document.getElementById('add-svc-proc').value.trim(),
+            config_files: document.getElementById('add-svc-configs').value.trim()
+        };
+
+        if (!data.name || !data.command_start || !data.command_stop || !data.process_name) {
+            App.toast('Lütfen tüm zorunlu (*) alanları doldurun', 'error');
+            return;
+        }
+
+        const result = await App.api('/api/services', {
+            method: 'POST',
+            body: data
+        });
+
+        if (result.ok) {
+            App.toast(result.message, 'success');
+            App.closeModal();
+            this.fetchServices();
+        } else {
+            App.toast(result.error || 'Hata oluştu', 'error');
         }
     }
 };

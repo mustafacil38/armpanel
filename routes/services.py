@@ -227,6 +227,45 @@ def list_services():
     return jsonify(services)
 
 
+@services_bp.route("/api/services", methods=["POST"])
+def add_service():
+    data = request.get_json()
+    name = data.get("name")
+    description = data.get("description", "")
+    command_start = data.get("command_start")
+    command_stop = data.get("command_stop")
+    command_restart = data.get("command_restart", "")
+    process_name = data.get("process_name")
+    config_files = data.get("config_files", "")
+    default_port = data.get("default_port")
+
+    if not name or not command_start or not command_stop or not process_name:
+        return jsonify({"ok": False, "error": "Lütfen tüm zorunlu alanları doldurun"}), 400
+
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM services WHERE name = ?", (name,)).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({"ok": False, "error": f"'{name}' adında bir servis zaten mevcut"}), 400
+
+    try:
+        conn.execute(
+            """INSERT INTO services
+               (name, icon, description, command_start, command_stop,
+                command_restart, process_name, default_port, config_files, is_autostart)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (name, "fa-solid fa-cube", description, command_start, command_stop,
+             command_restart, process_name, default_port if default_port else 0, config_files, 0)
+        )
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    conn.close()
+    return jsonify({"ok": True, "message": f"'{name}' servisi başarıyla eklendi"})
+
+
 @services_bp.route("/api/services/<int:sid>/start", methods=["POST"])
 def start_service(sid):
     conn = get_db()
