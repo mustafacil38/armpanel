@@ -117,61 +117,47 @@ def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
             new_content = content
             
             if "nginx" in svc_name_lower:
-                # Target settings to appropriate files
-                is_main_conf = "nginx.conf" in file_path
+                # Nginx Settings Map (All files searched for these)
+                # Group 1: Prefix, Group 2: Suffix
+                nginx_patterns = {
+                    "default_port": (r"(^\s*listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))", True),
+                    "root_dir": (r"(^\s*root\s+)[^;]+(;)", True),
+                    "server_name": (r"(^\s*server_name\s+)[^;]+(;)", True),
+                    "worker_processes": (r"(^\s*worker_processes\s+)[^;]+(;)", True),
+                    "client_max_body_size": (r"(^\s*client_max_body_size\s+)[^;]+(;)", True)
+                }
                 
-                if not is_main_conf:
-                    # Site settings: listen, root, server_name
-                    if "default_port" in new_settings:
-                        new_content = re.sub(
-                            r"(^\s*listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
-                            f"\\1{new_settings['default_port']}\\2",
-                            new_content, flags=re.MULTILINE
-                        )
-                    if "root_dir" in new_settings:
-                        new_content = re.sub(
-                            r"(^\s*root\s+)[^;]+(;)",
-                            f"\\1{new_settings['root_dir']}\\2",
-                            new_content, flags=re.MULTILINE
-                        )
-                    if "server_name" in new_settings:
-                        new_content = re.sub(
-                            r"(^\s*server_name\s+)[^;]+(;)",
-                            f"\\1{new_settings['server_name']}\\2",
-                            new_content, flags=re.MULTILINE
-                        )
-                else:
-                    # Global settings: worker_processes, client_max_body_size
-                    if "worker_processes" in new_settings:
-                        new_content = re.sub(
-                            r"(^\s*worker_processes\s+)[^;]+(;)",
-                            f"\\1{new_settings['worker_processes']}\\2",
-                            new_content, flags=re.MULTILINE
-                        )
-                    if "client_max_body_size" in new_settings:
-                        new_content = re.sub(
-                            r"(^\s*client_max_body_size\s+)[^;]+(;)",
-                            f"\\1{new_settings['client_max_body_size']}\\2",
-                            new_content, flags=re.MULTILINE
-                        )
+                for key, (pattern, use_suffix) in nginx_patterns.items():
+                    val = new_settings.get(key) if key != "default_port" else new_settings.get("default_port")
+                    if val is not None:
+                        if use_suffix:
+                            new_content = re.sub(pattern, f"\\1{val}\\2", new_content, flags=re.MULTILINE)
+                        else:
+                            new_content = re.sub(pattern, f"\\1{val}", new_content, flags=re.MULTILINE)
             
             elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
-                # Port
+                # Port / Listen
                 if "default_port" in new_settings:
                     new_content = re.sub(
                         r"(^\s*listen\s*=\s*(?:.*:)?)\d+",
                         f"\\1{new_settings['default_port']}",
                         new_content, flags=re.MULTILINE
                     )
-                # PHP/FPM settings - matches even if commented with ; or #
-                for key, val in new_settings.items():
-                    if key in ["default_port", "config_files", "description", "sid"]: continue
-                    # Safe regex escape and replace even commented lines
-                    new_content = re.sub(
-                        rf"(^[;#]?\s*{re.escape(key)}\s*=\s*).+",
-                        f"{key} = {val}",
-                        new_content, flags=re.MULTILINE
-                    )
+                # PHP/FPM settings - preserves indentation and handles commented lines
+                # We target known keys to avoid corrupting other lines
+                php_keys = ["upload_max_filesize", "post_max_size", "memory_limit", "max_execution_time", 
+                            "pm", "pm.max_children", "pm.start_servers", "display_errors"]
+                
+                for key in php_keys:
+                    if key in new_settings:
+                        val = new_settings[key]
+                        # This regex captures the indentation and potential comment char
+                        # Example: ";  memory_limit = 128M" -> "memory_limit = 256M" (preserving indentation)
+                        new_content = re.sub(
+                            rf"(^[;#]?\s*){re.escape(key)}(\s*=\s*).+",
+                            f"\\1{key}\\2{val}",
+                            new_content, flags=re.MULTILINE
+                        )
             
             if new_content != content:
                 # Write directly without backup as requested
