@@ -7,8 +7,8 @@ const Installer = {
         container.innerHTML = `
             <div class="fade-in">
                 <div class="page-header">
-                    <h2><i class="fa-solid fa-download" style="background:var(--gradient-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></i> Uygulama Yükleyici</h2>
-                    <p>apps.txt dosyasındaki uygulamaları kurun</p>
+                    <h2><i class="fa-solid fa-download" style="background:var(--gradient-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></i> Uygulama Mağazası</h2>
+                    <p>Mağazadan tercih ettiğiniz uygulamaları kurun</p>
                 </div>
                 <div id="apps-list" class="grid-1">
                     <div class="page-loading"><div class="loading-spinner"></div></div>
@@ -42,7 +42,7 @@ const Installer = {
         }
 
         const icons = ['fa-solid fa-globe', 'fa-brands fa-node-js', 'fa-solid fa-database', 'fa-brands fa-python',
-                        'fa-solid fa-code', 'fa-solid fa-box', 'fa-solid fa-rocket'];
+            'fa-solid fa-code', 'fa-solid fa-box', 'fa-solid fa-rocket'];
 
         el.innerHTML = this._apps.map((app, i) => `
             <div class="card app-card slide-up" style="animation-delay:${i * 0.05}s">
@@ -92,7 +92,7 @@ const Installer = {
             </div>
             <iframe src="${ttydUrl}" class="ttyd-frame" id="install-ttyd-frame"></iframe>
         `;
- 
+
         App.openModal(`${app.name} Kurulumu`, html);
     },
 

@@ -7,7 +7,7 @@ const Dashboard = {
         container.innerHTML = `
             <div class="fade-in">
                 <div class="page-header">
-                    <h2><i class="fa-solid fa-gauge-high" style="background:var(--gradient-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></i> Dashboard</h2>
+                    <h2><i class="fa-solid fa-gauge-high" style="background:var(--gradient-brand);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"></i> Kontrol Paneli</h2>
                     <p>Sistem kaynaklarını gerçek zamanlı izleyin</p>
                 </div>
 
