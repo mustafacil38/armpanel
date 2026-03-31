@@ -71,8 +71,7 @@ def install_app(name):
     # Return the ttyd URL with the command to execute
     # The frontend will open this in an iframe/popup
     local_ip = get_local_ip()
-    encoded_cmd = urllib.parse.quote(target['command'])
-    ttyd_url = f"http://{local_ip}:{TTYD_PORT}/?cmd={encoded_cmd}"
+    ttyd_url = f"http://{local_ip}:{TTYD_PORT}"
 
     return jsonify({
         "ok": True,

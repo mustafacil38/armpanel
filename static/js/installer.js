@@ -78,17 +78,35 @@ const Installer = {
                     <span style="font-weight:600;font-size:1rem;">${app.name}</span>
                     <span style="color:var(--text-secondary);font-size:0.85rem;">v${app.version}</span>
                 </div>
-                <div style="padding:10px 14px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);font-family:'Courier New',monospace;font-size:0.8rem;color:var(--accent-green);margin-bottom:12px;word-break:break-all;">
-                    $ ${app.command}
+                <div class="install-cmd-box" style="position:relative;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);font-family:'Courier New',monospace;font-size:0.8rem;color:var(--accent-green);margin-bottom:12px;padding-right:45px;">
+                    <div id="install-cmd-text" style="word-break:break-all;">${app.command}</div>
+                    <button class="btn-copy-cmd" onclick="Installer.copyCommand()" 
+                        style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--text-secondary);cursor:pointer;padding:8px;transition:color 0.2s;">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
                 </div>
                 <p style="color:var(--text-secondary);font-size:0.82rem;">
                     <i class="fa-solid fa-info-circle"></i>
-                    Kurulum komutu ttyd terminalinde çalıştırılacak. Aşağıdaki terminalde işlemi izleyebilirsiniz.
+                    Kurulum komutunu yukarıdan kopyalayıp aşağıdaki terminale yapıştırın ve Enter'a basın.
                 </p>
             </div>
             <iframe src="${ttydUrl}" class="ttyd-frame" id="install-ttyd-frame"></iframe>
         `;
-
+ 
         App.openModal(`${app.name} Kurulumu`, html);
     },
+
+    copyCommand() {
+        const cmd = document.getElementById('install-cmd-text').innerText;
+        navigator.clipboard.writeText(cmd).then(() => {
+            const btn = document.querySelector('.btn-copy-cmd i');
+            btn.className = 'fa-solid fa-check';
+            btn.style.color = 'var(--accent-green)';
+            App.toast('Komut kopyalandı', 'success');
+            setTimeout(() => {
+                btn.className = 'fa-regular fa-copy';
+                btn.style.color = '';
+            }, 2000);
+        });
+    }
 };

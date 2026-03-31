@@ -63,8 +63,8 @@ def init_db():
             cur.execute(
                 """INSERT INTO services
                    (name, icon, description, command_start, command_stop,
-                    command_restart, process_name, default_port, config_files)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    command_restart, process_name, default_port, config_files, is_autostart)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     svc["name"],
                     svc["icon"],
@@ -75,6 +75,7 @@ def init_db():
                     svc["process_name"],
                     svc["default_port"],
                     svc["config_files"],
+                    0 # is_autostart default
                 ),
             )
 
