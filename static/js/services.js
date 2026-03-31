@@ -57,10 +57,10 @@ const Services = {
                     <div class="svc-desc">${svc.description} — Port: ${svc.default_port}</div>
                     <div class="svc-actions">
                         ${svc.is_running
-                            ? `<button class="btn-sm btn-stop" onclick="Services.action(${svc.id},'stop')"><i class="fa-solid fa-stop"></i> Durdur</button>
+                ? `<button class="btn-sm btn-stop" onclick="Services.action(${svc.id},'stop')"><i class="fa-solid fa-stop"></i> Durdur</button>
                                <button class="btn-sm btn-restart" onclick="Services.action(${svc.id},'restart')"><i class="fa-solid fa-rotate"></i> Yeniden</button>`
-                            : `<button class="btn-sm btn-start" onclick="Services.action(${svc.id},'start')"><i class="fa-solid fa-play"></i> Başlat</button>`
-                        }
+                : `<button class="btn-sm btn-start" onclick="Services.action(${svc.id},'start')"><i class="fa-solid fa-play"></i> Başlat</button>`
+            }
                         ${svc.config_files ? `<button class="btn-sm btn-config" onclick="Services.openConfig(${svc.id})"><i class="fa-solid fa-file-code"></i> Config</button>` : ''}
                         <button class="btn-sm btn-settings" onclick="Services.openSettings(${svc.id})"><i class="fa-solid fa-gear"></i> Ayarlar</button>
                         
@@ -188,15 +188,19 @@ const Services = {
         const name = svc.name.toLowerCase();
         let extraHtml = '';
 
-        // Service-specific settings
-        if (name.includes('nginx')) {
-            extraHtml = this._nginxSettings(svc);
-        } else if (name.includes('ttyd')) {
-            extraHtml = this._ttydSettings(svc);
-        } else if (name.includes('php')) {
-            extraHtml = this._phpSettings(svc);
-        } else if (name.includes('file')) {
-            extraHtml = this._fileBrowserSettings(svc);
+        // Service-specific settings (Only for core services by default)
+        const isCore = ['nginx', 'ttyd', 'php-fpm', 'file browser'].includes(name);
+
+        if (isCore) {
+            if (name.includes('nginx')) {
+                extraHtml = this._nginxSettings(svc);
+            } else if (name.includes('ttyd')) {
+                extraHtml = this._ttydSettings(svc);
+            } else if (name.includes('php')) {
+                extraHtml = this._phpSettings(svc);
+            } else if (name.includes('file')) {
+                extraHtml = this._fileBrowserSettings(svc);
+            }
         }
 
         const html = `
@@ -386,7 +390,7 @@ const Services = {
     async saveSettings() {
         const form = document.getElementById('svc-settings-form');
         const id = form.dataset.id;
-        
+
         // Ana ayarlar (Her zaman var olanlar)
         const data = {
             description: document.getElementById('svc-desc')?.value || '',
@@ -434,7 +438,7 @@ const Services = {
         const start = document.getElementById('svc-cmd-start');
         const restart = document.getElementById('svc-cmd-restart');
         const stop = document.getElementById('svc-cmd-stop');
-        
+
         // Update -p port in commands
         if (start) start.value = start.value.replace(/(-p\s+)\d+/, `$1${newPort}`);
         if (restart) restart.value = restart.value.replace(/(-p\s+)\d+/, `$1${newPort}`);
