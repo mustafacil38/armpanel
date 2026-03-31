@@ -1,9 +1,24 @@
 import re
 import os
+import socket
+import urllib.parse
 from flask import Blueprint, jsonify
 from config import APPS_FILE, TTYD_PORT
 
 installer_bp = Blueprint("installer", __name__)
+
+
+def get_local_ip():
+    try:
+        # Create a dummy socket to find the local IP address used for outbound connections
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # 8.8.8.8 is Google's public DNS, but we don't actually need to connect
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 
 def _parse_apps_file():
@@ -55,7 +70,9 @@ def install_app(name):
 
     # Return the ttyd URL with the command to execute
     # The frontend will open this in an iframe/popup
-    ttyd_url = f"http://localhost:{TTYD_PORT}"
+    local_ip = get_local_ip()
+    encoded_cmd = urllib.parse.quote(target['command'])
+    ttyd_url = f"http://{local_ip}:{TTYD_PORT}/?cmd={encoded_cmd}"
 
     return jsonify({
         "ok": True,

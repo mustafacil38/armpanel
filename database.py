@@ -34,7 +34,8 @@ def init_db():
             command_restart TEXT DEFAULT '',
             process_name TEXT DEFAULT '',
             default_port INTEGER DEFAULT 0,
-            config_files TEXT DEFAULT ''
+            config_files TEXT DEFAULT '',
+            is_autostart INTEGER DEFAULT 0
         )
     """)
 

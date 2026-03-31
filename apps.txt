@@ -13,3 +13,7 @@ command=apt update && apt install -y mariadb-server && service mariadb start
 [Python3 Pip]
 version=3.x
 command=apt update && apt install -y python3-pip
+
+[SQLite Web]
+version=1.9.x
+command=pip3 install sqlite-web
