@@ -49,8 +49,45 @@ def favicon():
     return "", 204
 
 
+def auto_start_all():
+    """Panel açılışında is_autostart = 1 olan servisleri başlatır."""
+    import subprocess
+    from database import get_db
+    
+    print("\n  [AUTO-START] Servisler kontrol ediliyor...")
+    conn = get_db()
+    
+    # 1. Normal servisler
+    try:
+        services = conn.execute("SELECT name, command_start FROM services WHERE is_autostart = 1").fetchall()
+        for svc in services:
+            print(f"  [AUTO-START] {svc['name']} başlatılıyor...")
+            subprocess.Popen(svc["command_start"], shell=True, 
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"  [ERROR] Servis auto-start hatası: {e}")
+
+    # 2. Cloudflare Tunnel
+    try:
+        token_row = conn.execute("SELECT value FROM settings WHERE key = 'cf_token'").fetchone()
+        auto_row = conn.execute("SELECT value FROM settings WHERE key = 'cf_autostart'").fetchone()
+        if token_row and token_row["value"] and auto_row and auto_row["value"] == "1":
+            print(f"  [AUTO-START] Cloudflare Tunnel başlatılıyor...")
+            subprocess.Popen(
+                f"cloudflared tunnel --no-autoupdate run --token {token_row['value']}",
+                shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+    except Exception as e:
+        print(f"  [ERROR] Cloudflare auto-start hatası: {e}")
+        
+    conn.close()
+
+
 if __name__ == "__main__":
     init_db()
+    # Otomatik başlatma fonksiyonunu çağır
+    auto_start_all()
+    
     print(f"\n  +======================================+")
     print(f"  |     ArmPanel - Mobil Konsol          |")
     print(f"  |     http://localhost:{PANEL_PORT}            |")

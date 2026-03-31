@@ -222,6 +222,7 @@ def list_services():
         svc = _extract_all_settings_from_configs(
             svc["name"], svc["config_files"], svc
         )
+        svc["is_autostart"] = row["is_autostart"]  # Veritabanından gelen veri
         services.append(svc)
     return jsonify(services)
 
@@ -251,11 +252,33 @@ def stop_service(sid):
         return jsonify({"ok": False, "error": "Service not found"}), 404
 
     try:
-        subprocess.Popen(svc["command_stop"], shell=True,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Nginx ise daha agresif bir durdurma (V9)
+        if "nginx" in svc["name"].lower():
+            subprocess.run(svc["command_stop"], shell=True, 
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Eğer hala çalışıyorsa pkill ile zorla kapat
+            subprocess.run("pkill -f nginx", shell=True, 
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(svc["command_stop"], shell=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
         return jsonify({"ok": True, "message": f"{svc['name']} durduruluyor..."})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@services_bp.route("/api/services/<int:sid>/autostart", methods=["POST"])
+def toggle_autostart(sid):
+    data = request.get_json()
+    is_autostart = 1 if data.get("is_autostart") else 0
+    
+    conn = get_db()
+    conn.execute("UPDATE services SET is_autostart = ? WHERE id = ?", (is_autostart, sid))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"ok": True, "message": "Otomatik başlatma ayarı güncellendi"})
 
 
 @services_bp.route("/api/services/<int:sid>/restart", methods=["POST"])
