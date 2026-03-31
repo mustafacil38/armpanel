@@ -59,27 +59,24 @@ def _extract_all_settings_from_configs(svc_name, config_files_str, current_db_st
 
     elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
         # Port / Listen
-        match = re.search(r"listen\s*=\s*([^ \n]+)", content)
+        # Matches: listen = 127.0.0.1:9000 or listen = 9000 or listen = /run/php...
+        match = re.search(r"^\s*listen\s*=\s*(?:.*:)?(\d+)", content, re.MULTILINE)
         if match:
-            val = match.group(1).strip()
-            if ":" in val:
-                settings["default_port"] = val.split(":")[-1]
-            else:
-                settings["default_port"] = val
+            settings["default_port"] = int(match.group(1))
         
-        # PHP INI settings
+        # PHP INI settings (also matches commented lines)
         patterns = {
-            "upload_max_filesize": r"upload_max_filesize\s*=\s*(.+)",
-            "post_max_size": r"post_max_size\s*=\s*(.+)",
-            "memory_limit": r"memory_limit\s*=\s*(.+)",
-            "max_execution_time": r"max_execution_time\s*=\s*(.+)",
-            "display_errors": r"display_errors\s*=\s*(.+)",
-            "pm": r"pm\s*=\s*(.+)",
-            "pm.max_children": r"pm\.max_children\s*=\s*(\d+)",
-            "pm.start_servers": r"pm\.start_servers\s*=\s*(\d+)",
+            "upload_max_filesize": r"^;?\s*upload_max_filesize\s*=\s*(.+)",
+            "post_max_size": r"^;?\s*post_max_size\s*=\s*(.+)",
+            "memory_limit": r"^;?\s*memory_limit\s*=\s*(.+)",
+            "max_execution_time": r"^;?\s*max_execution_time\s*=\s*(.+)",
+            "display_errors": r"^;?\s*display_errors\s*=\s*(.+)",
+            "pm": r"^;?\s*pm\s*=\s*(.+)",
+            "pm.max_children": r"^;?\s*pm\.max_children\s*=\s*(\d+)",
+            "pm.start_servers": r"^;?\s*pm\.start_servers\s*=\s*(\d+)",
         }
         for key, pattern in patterns.items():
-            match = re.search(pattern, content)
+            match = re.search(pattern, content, re.MULTILINE)
             if match:
                 settings[key] = match.group(1).strip()
                 
@@ -108,38 +105,39 @@ def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
                     new_content = re.sub(
                         r"(listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
                         f"\\1{new_settings['default_port']}\\2",
-                        new_content
+                        new_content, flags=re.MULTILINE
                     )
                 # Root
                 if "root_dir" in new_settings:
                     new_content = re.sub(
                         r"(root\s+)[^;]+(;)",
                         f"\\1{new_settings['root_dir']}\\2",
-                        new_content
+                        new_content, flags=re.MULTILINE
                     )
                 # Server Name
                 if "server_name" in new_settings:
                     new_content = re.sub(
                         r"(server_name\s+)[^;]+(;)",
                         f"\\1{new_settings['server_name']}\\2",
-                        new_content
+                        new_content, flags=re.MULTILINE
                     )
             
             elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
                 # Port
                 if "default_port" in new_settings:
                     new_content = re.sub(
-                        r"(listen\s*=\s*(?:.*:)?)\d+",
+                        r"(^\s*listen\s*=\s*(?:.*:)?)\d+",
                         f"\\1{new_settings['default_port']}",
-                        new_content
+                        new_content, flags=re.MULTILINE
                     )
-                # PHP/FPM settings
+                # PHP/FPM settings - matches even if commented with ; or #
                 for key, val in new_settings.items():
                     if key in ["default_port", "config_files", "description", "sid"]: continue
+                    # Safe regex escape and replace even commented lines
                     new_content = re.sub(
-                        rf"({re.escape(key)}\s*=\s*).+",
-                        f"\\1{val}",
-                        new_content
+                        rf"(^[;#]?\s*{re.escape(key)}\s*=\s*).+",
+                        f"{key} = {val}",
+                        new_content, flags=re.MULTILINE
                     )
             
             if new_content != content:

@@ -195,7 +195,8 @@ const Services = {
                 <div class="form-row">
                     <div class="form-group">
                         <label>Varsayılan Port</label>
-                        <input type="number" class="form-control" id="svc-port" value="${svc.default_port}">
+                        <input type="text" class="form-control" id="svc-port" value="${svc.default_port}"
+                            oninput="Services._syncCommands(this.value)">
                     </div>
                 </div>
                 <div class="form-group">
@@ -235,7 +236,7 @@ const Services = {
                 <label>Dinleme Portu</label>
                 <input type="number" class="form-control" id="nginx-listen-port" 
                     value="${svc.default_port}" placeholder="${svc.default_port}"
-                    oninput="document.getElementById('svc-port').value = this.value">
+                    oninput="document.getElementById('svc-port').value = this.value; Services._syncCommands(this.value)">
             </div>
             <div class="form-group">
                 <label>Server Name (Domain)</label>
@@ -408,6 +409,21 @@ const Services = {
         } else {
             App.toast(result.error || 'Kaydetme hatası', 'error');
         }
+    },
+
+    _syncCommands(newPort) {
+        const start = document.getElementById('svc-cmd-start');
+        const restart = document.getElementById('svc-cmd-restart');
+        const stop = document.getElementById('svc-cmd-stop');
+        
+        // Update -p port in commands
+        if (start) start.value = start.value.replace(/(-p\s+)\d+/, `$1${newPort}`);
+        if (restart) restart.value = restart.value.replace(/(-p\s+)\d+/, `$1${newPort}`);
+        // Also update service-specific ports if they exist
+        const nginxPort = document.getElementById('nginx-listen-port');
+        if (nginxPort) nginxPort.value = newPort;
+        const phpListen = document.getElementById('php-listen');
+        if (phpListen) phpListen.value = newPort;
     },
 
     _escHtml(str) {
