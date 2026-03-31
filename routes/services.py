@@ -117,20 +117,54 @@ def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
             new_content = content
             
             if "nginx" in svc_name_lower:
-                # Nginx Settings Map (All files searched for these)
-                # Group 1: Prefix, Group 2: Suffix
-                nginx_patterns = {
-                    "default_port": (r"(^\s*listen\s+(?:\[::\]:)?)\d+([^;]*;)", True),
-                    "root_dir": (r"(^\s*root\s+)[^;]+(;)", True),
-                    "server_name": (r"(^\s*server_name\s+)[^;]+(;)", True),
-                    "worker_processes": (r"(^\s*worker_processes\s+)[^;]+(;)", True),
-                    "client_max_body_size": (r"(^\s*client_max_body_size\s+)[^;]+(;)", True)
-                }
-                
-                for key, (pattern, use_suffix) in nginx_patterns.items():
-                    val = new_settings.get(key)
-                    if val is not None and val != "":
-                        new_content = re.sub(pattern, f"\\1{val}\\2", new_content, flags=re.MULTILINE)
+                new_lines = []
+                for line in content.splitlines():
+                    updated_line = line
+                    # 1. Listen (Port) - matches 'listen 8080;' and 'listen [::]:8080;'
+                    if "default_port" in new_settings:
+                        port = new_settings["default_port"]
+                        updated_line = re.sub(
+                            r"(^\s*listen\s+(?:\[::\]:)?)\d+(.*;)",
+                            f"\\1{port}\\2",
+                            updated_line
+                        )
+                    
+                    # 2. Root Dir - matches 'root /path/to/dir;'
+                    if "root_dir" in new_settings:
+                        root = new_settings["root_dir"]
+                        updated_line = re.sub(
+                            r"(^\s*root\s+)[^;]+(;)",
+                            f"\\1{root}\\2",
+                            updated_line
+                        )
+                    
+                    # 3. Server Name - matches 'server_name _;'
+                    if "server_name" in new_settings:
+                        name = new_settings["server_name"]
+                        updated_line = re.sub(
+                            r"(^\s*server_name\s+)[^;]+(;)",
+                            f"\\1{name}\\2",
+                            updated_line
+                        )
+                    
+                    # 4. Global workers/body size
+                    if "worker_processes" in new_settings:
+                        wp = new_settings["worker_processes"]
+                        updated_line = re.sub(
+                            r"(^\s*worker_processes\s+)[^;]+(;)",
+                            f"\\1{wp}\\2",
+                            updated_line
+                        )
+                    if "client_max_body_size" in new_settings:
+                        cms = new_settings["client_max_body_size"]
+                        updated_line = re.sub(
+                            r"(^\s*client_max_body_size\s+)[^;]+(;)",
+                            f"\\1{cms}\\2",
+                            updated_line
+                        )
+                    
+                    new_lines.append(updated_line)
+                new_content = "\n".join(new_lines) + ("\n" if content.endswith("\n") else "")
             
             elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
                 # Port / Listen
