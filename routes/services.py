@@ -118,52 +118,39 @@ def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
             
             if "nginx" in svc_name_lower:
                 new_lines = []
+                # Ensure we handle multiple listen lines by tracking if we've already handled it
+                port_handled = False
                 for line in content.splitlines():
-                    updated_line = line
-                    # 1. Listen (Port) - matches 'listen 8080;' and 'listen [::]:8080;'
-                    if "default_port" in new_settings:
-                        port = new_settings["default_port"]
-                        updated_line = re.sub(
-                            r"(^\s*listen\s+(?:\[::\]:)?)\d+(.*;)",
-                            f"\\1{port}\\2",
-                            updated_line
-                        )
+                    stripped = line.strip()
                     
-                    # 2. Root Dir - matches 'root /path/to/dir;'
-                    if "root_dir" in new_settings:
+                    # 1. Listen (Port)
+                    if "default_port" in new_settings and stripped.startswith("listen"):
+                        if not port_handled:
+                            port = new_settings["default_port"]
+                            # Write both IPv4 and IPv6 lines
+                            new_lines.append(f"    listen {port};")
+                            new_lines.append(f"    listen [::]:{port};")
+                            port_handled = True
+                        continue # Skip the original listen lines
+                    
+                    # 2. Root Dir
+                    elif "root_dir" in new_settings and stripped.startswith("root "):
                         root = new_settings["root_dir"]
-                        updated_line = re.sub(
-                            r"(^\s*root\s+)[^;]+(;)",
-                            f"\\1{root}\\2",
-                            updated_line
-                        )
+                        new_lines.append(f"    root {root};")
                     
-                    # 3. Server Name - matches 'server_name _;'
-                    if "server_name" in new_settings:
+                    # 3. Server Name
+                    elif "server_name" in new_settings and stripped.startswith("server_name"):
                         name = new_settings["server_name"]
-                        updated_line = re.sub(
-                            r"(^\s*server_name\s+)[^;]+(;)",
-                            f"\\1{name}\\2",
-                            updated_line
-                        )
+                        new_lines.append(f"    server_name {name};")
                     
-                    # 4. Global workers/body size
-                    if "worker_processes" in new_settings:
+                    # 4. Global parameters (just simple regex replace for these)
+                    elif "worker_processes" in new_settings and stripped.startswith("worker_processes"):
                         wp = new_settings["worker_processes"]
-                        updated_line = re.sub(
-                            r"(^\s*worker_processes\s+)[^;]+(;)",
-                            f"\\1{wp}\\2",
-                            updated_line
-                        )
-                    if "client_max_body_size" in new_settings:
-                        cms = new_settings["client_max_body_size"]
-                        updated_line = re.sub(
-                            r"(^\s*client_max_body_size\s+)[^;]+(;)",
-                            f"\\1{cms}\\2",
-                            updated_line
-                        )
+                        new_lines.append(f"worker_processes {wp};")
                     
-                    new_lines.append(updated_line)
+                    else:
+                        new_lines.append(line)
+                
                 new_content = "\n".join(new_lines) + ("\n" if content.endswith("\n") else "")
             
             elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
