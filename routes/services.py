@@ -222,7 +222,7 @@ def list_services():
         svc = _extract_all_settings_from_configs(
             svc["name"], svc["config_files"], svc
         )
-        svc["is_autostart"] = row["is_autostart"]  # Veritabanından gelen veri
+        svc["is_autostart"] = row["is_autostart"] if row["is_autostart"] is not None else 0
         services.append(svc)
     return jsonify(services)
 

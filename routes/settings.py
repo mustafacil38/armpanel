@@ -53,9 +53,11 @@ def update_user():
 def get_cloudflare():
     conn = get_db()
     token_row = conn.execute("SELECT value FROM settings WHERE key = 'cf_token'").fetchone()
+    auto_row = conn.execute("SELECT value FROM settings WHERE key = 'cf_autostart'").fetchone()
     conn.close()
 
     token = token_row["value"] if token_row else ""
+    cf_autostart = (auto_row["value"] == "1") if auto_row else False
 
     # Check if cloudflared is running
     is_running = False
@@ -69,6 +71,7 @@ def get_cloudflare():
         "ok": True,
         "token": token,
         "is_running": is_running,
+        "cf_autostart": cf_autostart
     })
 
 
@@ -114,6 +117,19 @@ def stop_cloudflare():
         return jsonify({"ok": True, "message": "Cloudflare Tunnel durduruldu"})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@settings_bp.route("/api/settings/cloudflare/autostart", methods=["POST"])
+def toggle_cf_autostart():
+    data = request.get_json()
+    is_autostart = "1" if data.get("is_autostart") else "0"
+    
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('cf_autostart', ?)", (is_autostart,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"ok": True, "message": "Cloudflare otomatik başlatma ayarı güncellendi"})
 
 
 # ── GitHub Update ──

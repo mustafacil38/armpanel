@@ -58,6 +58,15 @@ const Services = {
                         }
                         ${svc.config_files ? `<button class="btn-sm btn-config" onclick="Services.openConfig(${svc.id})"><i class="fa-solid fa-file-code"></i> Config</button>` : ''}
                         <button class="btn-sm btn-settings" onclick="Services.openSettings(${svc.id})"><i class="fa-solid fa-gear"></i> Ayarlar</button>
+                        
+                        <!-- Auto Start Toggle -->
+                        <div class="auto-start-control" style="margin-left:auto;" title="Açılışta otomatik başlat">
+                            <label class="switch">
+                                <input type="checkbox" ${svc.is_autostart ? 'checked' : ''} 
+                                    onchange="Services.toggleAutoStart(${svc.id}, this)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="svc-status ${svc.is_running ? 'running' : 'stopped'}">
@@ -218,19 +227,7 @@ const Services = {
 
                 ${extraHtml}
 
-                <div style="margin-top:20px;display:flex;gap:8px;">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="auto-start-control" title="Panel açılışında otomatik başlat">
-                            <label class="switch">
-                                <input type="checkbox" id="autostart-${svc.id}" ${svc.is_autostart ? 'checked' : ''} 
-                                    onchange="Services.toggleAutoStart(${svc.id}, this)">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <button class="btn-action" onclick="Services.openSettings(${svc.id})" title="Ayarlar">
-                            <i class="fas fa-cog"></i>
-                        </button>
-                    </div>
+                <div style="margin-top:20px;">
                     <button class="btn-primary" onclick="Services.saveSettings()">
                         <i class="fa-solid fa-check"></i> Kaydet
                     </button>
@@ -452,4 +449,24 @@ const Services = {
     _escAttr(str) {
         return (str || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     },
+
+    async toggleAutoStart(sid, checkbox) {
+        try {
+            const res = await fetch(`/api/services/${sid}/autostart`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_autostart: checkbox.checked })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                App.toast(data.message, 'success');
+            } else {
+                checkbox.checked = !checkbox.checked;
+                App.toast(data.error || 'Hata oluştu', 'error');
+            }
+        } catch (e) {
+            checkbox.checked = !checkbox.checked;
+            App.toast('Bağlantı hatası', 'error');
+        }
+    }
 };
