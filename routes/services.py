@@ -56,6 +56,11 @@ def _extract_all_settings_from_configs(svc_name, config_files_str, current_db_st
         match = re.search(r"worker_processes\s+([^;]+);", content)
         if match:
             settings["worker_processes"] = match.group(1).strip()
+            
+        # Client Max Body Size
+        match = re.search(r"client_max_body_size\s+([^;]+);", content)
+        if match:
+            settings["client_max_body_size"] = match.group(1).strip()
 
     elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
         # Port / Listen
@@ -100,27 +105,25 @@ def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
             new_content = content
             
             if "nginx" in svc_name_lower:
-                # Port
-                if "default_port" in new_settings:
-                    new_content = re.sub(
-                        r"(listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
-                        f"\\1{new_settings['default_port']}\\2",
-                        new_content, flags=re.MULTILINE
-                    )
-                # Root
-                if "root_dir" in new_settings:
-                    new_content = re.sub(
-                        r"(root\s+)[^;]+(;)",
-                        f"\\1{new_settings['root_dir']}\\2",
-                        new_content, flags=re.MULTILINE
-                    )
-                # Server Name
-                if "server_name" in new_settings:
-                    new_content = re.sub(
-                        r"(server_name\s+)[^;]+(;)",
-                        f"\\1{new_settings['server_name']}\\2",
-                        new_content, flags=re.MULTILINE
-                    )
+                # Nginx için güncellenecek alanlar listesi
+                # listen, root, server_name, worker_processes
+                nginx_map = {
+                    "default_port": r"(^\s*listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
+                    "root_dir": r"(^\s*root\s+)[^;]+(;)",
+                    "server_name": r"(^\s*server_name\s+)[^;]+(;)",
+                    "worker_processes": r"(^\s*worker_processes\s+)[^;]+(;)",
+                    "client_max_body_size": r"(^\s*client_max_body_size\s+)[^;]+(;)"
+                }
+                
+                for key, pattern in nginx_map.items():
+                    if key in new_settings or (key == "default_port" and "default_port" in new_settings):
+                        val = new_settings.get(key) if key != "default_port" else new_settings["default_port"]
+                        if val is not None:
+                            new_content = re.sub(
+                                pattern,
+                                f"\\1{val}\\2",
+                                new_content, flags=re.MULTILINE
+                            )
             
             elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
                 # Port

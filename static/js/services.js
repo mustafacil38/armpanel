@@ -250,6 +250,10 @@ const Services = {
                 <label>Worker Processes</label>
                 <input type="text" class="form-control" id="nginx-workers" value="${this._escAttr(svc.worker_processes || 'auto')}">
             </div>
+            <div class="form-group">
+                <label>Client Max Body Size</label>
+                <input type="text" class="form-control" id="nginx-client-body" value="${this._escAttr(svc.client_max_body_size || '50M')}">
+            </div>
         `;
     },
 
@@ -385,6 +389,7 @@ const Services = {
             data.server_name = nginxServerName.value;
             data.root_dir = document.getElementById('nginx-root-dir')?.value || '';
             data.worker_processes = document.getElementById('nginx-workers')?.value || '';
+            data.client_max_body_size = document.getElementById('nginx-client-body')?.value || '';
         }
 
         const phpUpload = document.getElementById('php-upload-limit');
