@@ -29,59 +29,71 @@ def _get_all_configs_content(config_files_str):
 
 
 def _extract_all_settings_from_configs(svc_name, config_files_str, current_db_stats):
-    content = _get_all_configs_content(config_files_str)
-    if not content:
+    if not config_files_str:
         return current_db_stats
     
     settings = current_db_stats.copy()
     svc_name_lower = svc_name.lower()
+    files = [f.strip() for f in config_files_str.split(",") if f.strip()]
     
+    # Read each file separately to target specific settings to specific files
+    file_contents = {}
+    for fpath in files:
+        if os.path.isfile(fpath):
+            try:
+                with open(fpath, "r") as f:
+                    file_contents[fpath] = f.read()
+            except Exception:
+                continue
+
     if "nginx" in svc_name_lower:
-        # Port
-        match = re.search(r"listen\s+(?:\[::\]:)?(\d+)\s*(?:default_server|ssl|;)", content)
-        if match:
-            settings["default_port"] = int(match.group(1))
+        # Site config settings (Port, Root, Server Name) - usually in sites-available or conf.d
+        site_content = ""
+        for fpath, content in file_contents.items():
+            if "nginx.conf" not in fpath:
+                site_content += content
         
-        # Root
-        match = re.search(r"root\s+([^;]+);", content)
-        if match:
-            settings["root_dir"] = match.group(1).strip()
+        if site_content:
+            # Matches ACTIVE (uncommented) lines only
+            match = re.search(r"^\s*listen\s+(?:\[::\]:)?(\d+)\s*(?:default_server|ssl|;)", site_content, re.MULTILINE)
+            if match:
+                settings["default_port"] = int(match.group(1))
             
-        # Server Name
-        match = re.search(r"server_name\s+([^;]+);", content)
-        if match:
-            settings["server_name"] = match.group(1).strip()
+            match = re.search(r"^\s*root\s+([^;]+);", site_content, re.MULTILINE)
+            if match:
+                settings["root_dir"] = match.group(1).strip()
+                
+            match = re.search(r"^\s*server_name\s+([^;]+);", site_content, re.MULTILINE)
+            if match:
+                settings["server_name"] = match.group(1).strip()
+        
+        # Global settings (Worker Processes) - usually in nginx.conf
+        main_content = file_contents.get("/etc/nginx/nginx.conf", "")
+        if not main_content: # Fallback: search all
+            main_content = "\n".join(file_contents.values())
             
-        # Worker Processes
-        match = re.search(r"worker_processes\s+([^;]+);", content)
+        match = re.search(r"^\s*worker_processes\s+([^;]+);", main_content, re.MULTILINE)
         if match:
             settings["worker_processes"] = match.group(1).strip()
-            
-        # Client Max Body Size
-        match = re.search(r"client_max_body_size\s+([^;]+);", content)
-        if match:
-            settings["client_max_body_size"] = match.group(1).strip()
 
     elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
+        full_content = "\n".join(file_contents.values())
         # Port / Listen
-        # Matches: listen = 127.0.0.1:9000 or listen = 9000 or listen = /run/php...
-        match = re.search(r"^\s*listen\s*=\s*(?:.*:)?(\d+)", content, re.MULTILINE)
+        match = re.search(r"^\s*listen\s*=\s*(?:.*:)?(\d+)", full_content, re.MULTILINE)
         if match:
             settings["default_port"] = int(match.group(1))
         
-        # PHP INI settings (also matches commented lines)
+        # PHP INI settings
         patterns = {
             "upload_max_filesize": r"^;?\s*upload_max_filesize\s*=\s*(.+)",
             "post_max_size": r"^;?\s*post_max_size\s*=\s*(.+)",
             "memory_limit": r"^;?\s*memory_limit\s*=\s*(.+)",
             "max_execution_time": r"^;?\s*max_execution_time\s*=\s*(.+)",
-            "display_errors": r"^;?\s*display_errors\s*=\s*(.+)",
             "pm": r"^;?\s*pm\s*=\s*(.+)",
             "pm.max_children": r"^;?\s*pm\.max_children\s*=\s*(\d+)",
-            "pm.start_servers": r"^;?\s*pm\.start_servers\s*=\s*(\d+)",
         }
         for key, pattern in patterns.items():
-            match = re.search(pattern, content, re.MULTILINE)
+            match = re.search(pattern, full_content, re.MULTILINE)
             if match:
                 settings[key] = match.group(1).strip()
                 
@@ -105,25 +117,43 @@ def _update_all_settings_in_configs(svc_name, config_files_str, new_settings):
             new_content = content
             
             if "nginx" in svc_name_lower:
-                # Nginx için güncellenecek alanlar listesi
-                # listen, root, server_name, worker_processes
-                nginx_map = {
-                    "default_port": r"(^\s*listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
-                    "root_dir": r"(^\s*root\s+)[^;]+(;)",
-                    "server_name": r"(^\s*server_name\s+)[^;]+(;)",
-                    "worker_processes": r"(^\s*worker_processes\s+)[^;]+(;)",
-                    "client_max_body_size": r"(^\s*client_max_body_size\s+)[^;]+(;)"
-                }
+                # Target settings to appropriate files
+                is_main_conf = "nginx.conf" in file_path
                 
-                for key, pattern in nginx_map.items():
-                    if key in new_settings or (key == "default_port" and "default_port" in new_settings):
-                        val = new_settings.get(key) if key != "default_port" else new_settings["default_port"]
-                        if val is not None:
-                            new_content = re.sub(
-                                pattern,
-                                f"\\1{val}\\2",
-                                new_content, flags=re.MULTILINE
-                            )
+                if not is_main_conf:
+                    # Site settings: listen, root, server_name
+                    if "default_port" in new_settings:
+                        new_content = re.sub(
+                            r"(^\s*listen\s+(?:\[::\]:)?)\d+(\s*(?:default_server|ssl|;))",
+                            f"\\1{new_settings['default_port']}\\2",
+                            new_content, flags=re.MULTILINE
+                        )
+                    if "root_dir" in new_settings:
+                        new_content = re.sub(
+                            r"(^\s*root\s+)[^;]+(;)",
+                            f"\\1{new_settings['root_dir']}\\2",
+                            new_content, flags=re.MULTILINE
+                        )
+                    if "server_name" in new_settings:
+                        new_content = re.sub(
+                            r"(^\s*server_name\s+)[^;]+(;)",
+                            f"\\1{new_settings['server_name']}\\2",
+                            new_content, flags=re.MULTILINE
+                        )
+                else:
+                    # Global settings: worker_processes, client_max_body_size
+                    if "worker_processes" in new_settings:
+                        new_content = re.sub(
+                            r"(^\s*worker_processes\s+)[^;]+(;)",
+                            f"\\1{new_settings['worker_processes']}\\2",
+                            new_content, flags=re.MULTILINE
+                        )
+                    if "client_max_body_size" in new_settings:
+                        new_content = re.sub(
+                            r"(^\s*client_max_body_size\s+)[^;]+(;)",
+                            f"\\1{new_settings['client_max_body_size']}\\2",
+                            new_content, flags=re.MULTILINE
+                        )
             
             elif "php-fpm" in svc_name_lower or "php" in svc_name_lower:
                 # Port
