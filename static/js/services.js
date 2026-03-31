@@ -58,7 +58,7 @@ const Services = {
                     <div class="svc-name">${svc.name}</div>
                     <div class="svc-desc">
                         ${svc.description}
-                        ${svc.default_port > 0 ? ` — <a href="http://${this._localIp}:${svc.default_port}" target="_blank" style="color:var(--accent-blue); text-decoration:none;"><i class="fa-solid fa-external-link" style="font-size:0.75rem;"></i> http://${this._localIp}:${svc.default_port}</a>` : ''}
+                        ${svc.default_port > 0 ? ` — <a href="http://${this._localIp}:${svc.default_port}" target="_blank" style="color:var(--accent-blue); text-decoration:none;"><i class="fa-solid fa-external-link" style="font-size:0.75rem;"></i>Servise Git: http://${this._localIp}:${svc.default_port}</a>` : ''}
                     </div>
                     <div class="svc-actions">
                         ${svc.is_running
