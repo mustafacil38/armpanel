@@ -2,6 +2,7 @@
 
 const Services = {
     _services: [],
+    _localIp: null,
 
     async render(container) {
         container.innerHTML = `
@@ -25,7 +26,8 @@ const Services = {
 
     async fetchServices() {
         const data = await App.api('/api/services');
-        this._services = Array.isArray(data) ? data : [];
+        this._services = Array.isArray(data.services) ? data.services : [];
+        this._localIp = data.local_ip || '127.0.0.1';
         this._renderList();
     },
 
@@ -54,7 +56,10 @@ const Services = {
                 </div>
                 <div class="svc-info">
                     <div class="svc-name">${svc.name}</div>
-                    <div class="svc-desc">${svc.description} — Servise Git: <a href="http://{local_ip}:${svc.default_port}" target="_blank">Link</a></div>
+                    <div class="svc-desc">
+                        ${svc.description}
+                        ${svc.default_port > 0 ? ` — <a href="http://${this._localIp}:${svc.default_port}" target="_blank" style="color:var(--accent-blue); text-decoration:none;"><i class="fa-solid fa-external-link" style="font-size:0.75rem;"></i> http://${this._localIp}:${svc.default_port}</a>` : ''}
+                    </div>
                     <div class="svc-actions">
                         ${svc.is_running
                 ? `<button class="btn-sm btn-stop" onclick="Services.action(${svc.id},'stop')"><i class="fa-solid fa-stop"></i> Durdur</button>

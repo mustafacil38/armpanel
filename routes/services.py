@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import psutil
 import re
+import socket
 from flask import Blueprint, request, jsonify
 from database import get_db
 
@@ -237,7 +238,21 @@ def list_services():
         )
         svc["is_autostart"] = row["is_autostart"] if row["is_autostart"] is not None else 0
         services.append(svc)
-    return jsonify(services)
+    return jsonify({
+        "services": services,
+        "local_ip": get_local_ip()
+    })
+
+
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 
 @services_bp.route("/api/services", methods=["POST"])
