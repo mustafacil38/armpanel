@@ -30,7 +30,7 @@ pip install -r requirements.txt --break-system-packages
 
 ### 4. Paneli Başlatın
 ```bash
-python app.py
+python3 app.py
 python3.13 app.py
 ```
 

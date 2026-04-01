@@ -2,8 +2,10 @@ import re
 import os
 import socket
 import urllib.parse
-from flask import Blueprint, jsonify
-from config import APPS_FILE, TTYD_PORT
+import urllib.request
+import subprocess
+from flask import Blueprint, jsonify, request
+from config import APPS_FILE, APPS_STORE_URL, TTYD_PORT
 
 installer_bp = Blueprint("installer", __name__)
 
@@ -23,11 +25,14 @@ def get_local_ip():
 
 def _parse_apps_file():
     apps = []
-    if not os.path.isfile(APPS_FILE):
-        return apps
-
-    with open(APPS_FILE, "r") as f:
-        content = f.read()
+    content = ""
+    try:
+        # Fetch the content from GitHub
+        with urllib.request.urlopen(APPS_STORE_URL, timeout=10) as response:
+            content = response.read().decode('utf-8')
+    except Exception:
+        # No local fallback as requested
+        return []
 
     blocks = re.split(r"\n(?=\[)", content.strip())
     for block in blocks:
@@ -35,7 +40,8 @@ def _parse_apps_file():
         if not lines or not lines[0].startswith("["):
             continue
         name = lines[0].strip("[] \t")
-        app = {"name": name, "version": "", "command": ""}
+        # Default values for more detailed view
+        app = {"name": name, "version": "N/A", "category": "Genel", "description": "", "command": ""}
         for line in lines[1:]:
             if "=" in line:
                 key, val = line.split("=", 1)
@@ -43,6 +49,10 @@ def _parse_apps_file():
                 val = val.strip()
                 if key == "version":
                     app["version"] = val
+                elif key == "category":
+                    app["category"] = val
+                elif key == "description":
+                    app["description"] = val
                 elif key == "command":
                     app["command"] = val
         apps.append(app)
@@ -79,3 +89,19 @@ def install_app(name):
         "ttyd_url": ttyd_url,
         "message": f"{target['name']} kurulumu başlatılacak..."
     })
+
+
+@installer_bp.route("/api/installer/send-command", methods=["POST"])
+def send_command():
+    data = request.get_json()
+    command = data.get("command")
+
+    if not command:
+        return jsonify({"ok": False, "error": "Komut bulunamadı"}), 400
+
+    try:
+        # Inject command into tmux session 'armpanel'
+        subprocess.run(["tmux", "send-keys", "-t", "armpanel", command, "C-m"], check=True)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Terminale komut gönderilemedi: {str(e)}"}), 500

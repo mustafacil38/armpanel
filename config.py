@@ -5,6 +5,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SECRET_KEY = os.environ.get("ARMPANEL_SECRET", "armpanel-secret-key-change-me")
 DATABASE_PATH = os.path.join(BASE_DIR, "armpanel.db")
 APPS_FILE = os.path.join(BASE_DIR, "apps.txt")
+APPS_STORE_URL = "https://raw.githubusercontent.com/mustafacil38/armpanel/main/app_store_list.txt"
 
 PANEL_HOST = "0.0.0.0"
 PANEL_PORT = 1569
@@ -32,9 +33,9 @@ DEFAULT_SERVICES = [
         "name": "ttyd",
         "icon": "fa-solid fa-terminal",
         "description": "Web-based terminal emulator",
-        "command_start": f"/etc/ttyd/ttyd.aarch64 -p {TTYD_PORT} -W bash &",
+        "command_start": f"/etc/ttyd/ttyd.aarch64 -p {TTYD_PORT} -W tmux new -A -s armpanel &",
         "command_stop": "pkill -f ttyd",
-        "command_restart": f"pkill -f ttyd; sleep 1; /etc/ttyd/ttyd.aarch64 -p {TTYD_PORT} -W bash &",
+        "command_restart": f"pkill -f ttyd; sleep 1; /etc/ttyd/ttyd.aarch64 -p {TTYD_PORT} -W tmux new -A -s armpanel &",
         "process_name": "ttyd",
         "default_port": TTYD_PORT,
         "config_files": "",
