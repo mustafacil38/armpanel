@@ -1,18 +1,27 @@
 #!/bin/bash
 
-# 1. Adım: Sistemi Güncelle
+# Adım: Sistemi Güncelle
 echo "--- Paket listesi güncelleniyor... ---"
 apt update -y
-# 2. Adım: Gerekli Paketleri Kur (-y parametresi otomatik onay verir)
-echo "--- Gerekli Paketler Kuruluyor... ---"
-apt install -y git wget python3.13 ttyd nginx
-sudo apt install -y software-properties-common
-sudo add-apt-repository ppa:ondrej/php
-sudo apt install -y php8.4
+# Gerekli Paketleri Kur (-y parametresi otomatik onay verir)
+
+# Sistem paketlerini yükle
+apt update && apt install -y git wget python3.13 python3-pip ttyd nginx software-properties-common
+
+# PHP 8.4 deposunu ekle ve yükle
+add-apt-repository ppa:ondrej/php -y
+apt update
+apt install -y php8.4
+
+# File Browser kurulumu
 curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
-cd\
+
+# Proje dizinine geçiş ve kurulum
+cd /root
 git clone https://github.com/mustafacil38/armpanel.git
-cd/root/armpanel
+cd /root/armpanel
+
+# Python gereksinimlerini yükle
 pip install -r requirements.txt --break-system-packages
 
 # 3. Adım: Kurulum Kontrolü
