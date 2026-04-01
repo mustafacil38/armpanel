@@ -27,7 +27,6 @@ venv/
 ENV/
 
 # Database
-armpanel.db
 armpanel.db-wal
 armpanel.db-shm
 
