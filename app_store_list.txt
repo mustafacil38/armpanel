@@ -1,0 +1,959 @@
+[Nginx]
+version=1.24
+category=Web Sunucu
+description=Yüksek performanslı, hafif HTTP ve ters proxy sunucusu
+command=apt update && apt install -y nginx && nginx
+
+[Apache2]
+version=2.4
+category=Web Sunucu
+description=Dünya genelinde en yaygın kullanılan web sunucusu
+command=apt update && apt install -y apache2 && apache2ctl start
+
+[Lighttpd]
+version=1.4
+category=Web Sunucu
+description=Düşük bellek tüketimiyle hızlı ve hafif web sunucusu
+command=apt update && apt install -y lighttpd && lighttpd -f /etc/lighttpd/lighttpd.conf
+
+[Caddy]
+version=2.x
+category=Web Sunucu
+description=Otomatik HTTPS destekli modern web sunucusu
+command=apt update && apt install -y debian-keyring debian-archive-keyring apt-transport-https curl && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && apt update && apt install -y caddy
+
+[HAProxy]
+version=2.8
+category=Web Sunucu
+description=Yüksek kullanılabilirlik için yük dengeleyici ve proxy
+command=apt update && apt install -y haproxy
+
+[Traefik]
+version=2.x
+category=Web Sunucu
+description=Modern HTTP ters proxy ve yük dengeleyici
+command=curl -Lo /usr/local/bin/traefik https://github.com/traefik/traefik/releases/latest/download/traefik_linux_arm64 && chmod +x /usr/local/bin/traefik
+
+[MariaDB]
+version=10.11
+category=Veritabanı
+description=MySQL uyumlu, topluluk tarafından geliştirilen ilişkisel veritabanı
+command=apt update && apt install -y mariadb-server && mariadbd-safe &
+
+[MySQL]
+version=8.0
+category=Veritabanı
+description=Dünyanın en popüler açık kaynak ilişkisel veritabanı
+command=apt update && apt install -y mysql-server && mysqld_safe &
+
+[PostgreSQL]
+version=15
+category=Veritabanı
+description=Güçlü, açık kaynak nesne-ilişkisel veritabanı sistemi
+command=apt update && apt install -y postgresql postgresql-contrib && pg_ctlcluster 15 main start
+
+[SQLite3]
+version=3.x
+category=Veritabanı
+description=Sunucusuz, sıfır konfigürasyonlu hafif SQL veritabanı motoru
+command=apt update && apt install -y sqlite3
+
+[MongoDB]
+version=7.0
+category=Veritabanı
+description=Esnek JSON benzeri belgeler kullanan NoSQL veritabanı
+command=apt update && apt install -y gnupg curl && curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" > /etc/apt/sources.list.d/mongodb-org-7.0.list && apt update && apt install -y mongodb-org && mongod --fork --logpath /var/log/mongodb.log
+
+[Redis]
+version=7.2
+category=Veritabanı
+description=Bellek içi veri yapısı deposu, cache ve mesaj broker
+command=apt update && apt install -y redis-server && redis-server &
+
+[Memcached]
+version=1.6
+category=Veritabanı
+description=Yüksek performanslı dağıtık bellek cache sistemi
+command=apt update && apt install -y memcached && memcached -d
+
+[CouchDB]
+version=3.x
+category=Veritabanı
+description=HTTP API'ye sahip JSON tabanlı belge veritabanı
+command=apt update && apt install -y curl apt-transport-https gnupg && curl -fsSL https://couchdb.apache.org/repo/keys.asc | gpg --dearmor | tee /usr/share/keyrings/couchdb-archive-keyring.gpg && echo "deb [signed-by=/usr/share/keyrings/couchdb-archive-keyring.gpg] https://apache.jfrog.io/artifactory/couchdb-deb/ bookworm main" > /etc/apt/sources.list.d/couchdb.list && apt update && apt install -y couchdb
+
+[InfluxDB]
+version=2.x
+category=Veritabanı
+description=Zaman serisi verileri için optimize edilmiş veritabanı
+command=curl -LO https://dl.influxdata.com/influxdb/releases/influxdb2_2.7.1_linux_arm64.tar.gz && tar xzf influxdb2_2.7.1_linux_arm64.tar.gz && mv influxdb2_2.7.1 /usr/local/influxdb && ln -s /usr/local/influxdb/influxd /usr/local/bin/influxd
+
+[KeyDB]
+version=6.x
+category=Veritabanı
+description=Redis'e tam uyumlu çok iş parçacıklı yüksek performanslı cache
+command=apt update && apt install -y keydb
+
+[MinIO]
+version=latest
+category=Veritabanı
+description=AWS S3 uyumlu yüksek performanslı nesne depolama sistemi
+command=curl -Lo /usr/local/bin/minio https://dl.min.io/server/minio/release/linux-arm64/minio && chmod +x /usr/local/bin/minio && mkdir -p /data/minio
+
+[Python3]
+version=3.11
+category=Programlama Dili
+description=Çok amaçlı, kolay öğrenilebilir yüksek seviyeli programlama dili
+command=apt update && apt install -y python3 python3-dev python3-venv
+
+[Python3 Pip]
+version=3.x
+category=Programlama Dili
+description=Python paket yöneticisi
+command=apt update && apt install -y python3-pip
+
+[Node.js]
+version=20 LTS
+category=Programlama Dili
+description=JavaScript'i sunucu tarafında çalıştıran V8 tabanlı runtime
+command=curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt install -y nodejs
+
+[PHP 8.2]
+version=8.2
+category=Programlama Dili
+description=Yaygın kullanılan sunucu taraflı web programlama dili
+command=apt update && apt install -y php8.2 php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-xml php8.2-mysql php8.2-gd php8.2-zip php8.2-fpm
+
+[Ruby]
+version=3.2
+category=Programlama Dili
+description=Dinamik, nesne yönelimli açık kaynak programlama dili
+command=apt update && apt install -y ruby ruby-dev
+
+[Go (Golang)]
+version=1.21
+category=Programlama Dili
+description=Google tarafından geliştirilen hızlı derlenen sistem programlama dili
+command=curl -LO https://go.dev/dl/go1.21.6.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.21.6.linux-arm64.tar.gz && echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc && source ~/.bashrc
+
+[Java OpenJDK 17]
+version=17 LTS
+category=Programlama Dili
+description=Platform bağımsız, nesne yönelimli programlama dili runtime'ı
+command=apt update && apt install -y openjdk-17-jdk openjdk-17-jre
+
+[Java OpenJDK 21]
+version=21 LTS
+category=Programlama Dili
+description=Java'nın uzun vadeli destek sunan en yeni LTS sürümü
+command=apt update && apt install -y openjdk-21-jdk openjdk-21-jre
+
+[Perl]
+version=5.36
+category=Programlama Dili
+description=Metin işleme ve sistem yönetimi için güçlü script dili
+command=apt update && apt install -y perl perl-modules
+
+[Lua]
+version=5.4
+category=Programlama Dili
+description=Hafif, hızlı ve gömülebilir betik dili
+command=apt update && apt install -y lua5.4 liblua5.4-dev
+
+[Rust]
+version=1.75
+category=Programlama Dili
+description=Bellek güvenli, sistem programlama odaklı modern dil
+command=curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source "$HOME/.cargo/env"
+
+[TypeScript]
+version=5.x
+category=Programlama Dili
+description=JavaScript'e statik tip desteği ekleyen tip güvenli süper set
+command=apt update && apt install -y nodejs npm && npm install -g typescript ts-node
+
+[Deno]
+version=1.x
+category=Programlama Dili
+description=TypeScript ve JavaScript için güvenli modern runtime
+command=curl -fsSL https://deno.land/install.sh | sh
+
+[Bun]
+version=1.x
+category=Programlama Dili
+description=Son derece hızlı all-in-one JavaScript runtime ve paket yöneticisi
+command=curl -fsSL https://bun.sh/install | bash
+
+[Composer]
+version=2.x
+category=Paket Yöneticisi
+description=PHP bağımlılık yönetim aracı
+command=apt update && apt install -y php-cli php-mbstring && curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+
+[npm]
+version=10.x
+category=Paket Yöneticisi
+description=Node.js için varsayılan paket yöneticisi
+command=apt update && apt install -y npm
+
+[Yarn]
+version=1.x
+category=Paket Yöneticisi
+description=Hızlı, güvenilir ve güvenli JavaScript paket yöneticisi
+command=npm install -g yarn
+
+[pnpm]
+version=8.x
+category=Paket Yöneticisi
+description=Disk alanı verimli hızlı paket yöneticisi
+command=npm install -g pnpm
+
+[pip3]
+version=23.x
+category=Paket Yöneticisi
+description=Python 3 için standart paket kurulum aracı
+command=apt update && apt install -y python3-pip
+
+[Poetry]
+version=1.7
+category=Paket Yöneticisi
+description=Python bağımlılık yönetimi ve paketleme aracı
+command=curl -sSL https://install.python-poetry.org | python3 -
+
+[Bundler]
+version=2.x
+category=Paket Yöneticisi
+description=Ruby gem bağımlılıklarını yöneten araç
+command=apt update && apt install -y ruby && gem install bundler
+
+[Maven]
+version=3.9
+category=Paket Yöneticisi
+description=Java projeleri için derleme ve bağımlılık yönetim aracı
+command=apt update && apt install -y maven
+
+[Gradle]
+version=8.x
+category=Paket Yöneticisi
+description=Android ve Java projeleri için esnek derleme otomasyon aracı
+command=apt update && apt install -y gradle
+
+[Cargo]
+version=1.75
+category=Paket Yöneticisi
+description=Rust dili için paket yöneticisi ve derleme aracı
+command=curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source "$HOME/.cargo/env"
+
+[WordPress]
+version=6.4
+category=CMS
+description=Dünyanın en çok kullanılan açık kaynak blog ve web sitesi platformu
+command=apt update && apt install -y wget php-mysql && wget https://wordpress.org/latest.tar.gz && tar xzf latest.tar.gz -C /var/www/html/
+
+[Drupal]
+version=10
+category=CMS
+description=Esnek ve güçlü kurumsal düzeyde içerik yönetim sistemi
+command=apt update && apt install -y composer php-cli && composer create-project drupal/recommended-project /var/www/html/drupal
+
+[Joomla]
+version=5.x
+category=CMS
+description=Esnek ve kullanımı kolay açık kaynak web sitesi yönetim platformu
+command=apt update && apt install -y wget unzip && wget https://downloads.joomla.org/cms/joomla5/5-0-0/Joomla_5-0-0-Stable-Full_Package.zip && mkdir -p /var/www/html/joomla && unzip Joomla_5-0-0*.zip -d /var/www/html/joomla
+
+[Ghost]
+version=5.x
+category=CMS
+description=Geliştiricilere yönelik minimalist Node.js tabanlı blog platformu
+command=apt update && apt install -y nodejs npm && npm install -g ghost-cli && mkdir -p /var/www/ghost && cd /var/www/ghost && ghost install --no-prompt
+
+[Strapi]
+version=4.x
+category=CMS
+description=Headless CMS; API-first içerik yönetim çerçevesi
+command=npx create-strapi-app@latest my-strapi --quickstart --no-run
+
+[Directus]
+version=10.x
+category=CMS
+description=Var olan SQL veritabanlarını anında API'ye dönüştüren headless CMS
+command=npm init directus-project@latest directus-app
+
+[Cockpit CMS]
+version=2.x
+category=CMS
+description=Hafif API odaklı PHP tabanlı headless içerik yönetim sistemi
+command=apt update && apt install -y php php-sqlite3 php-gd php-curl && curl https://getcockpit.com/start.php | php && mv cockpit /var/www/html/
+
+[Grav CMS]
+version=1.7
+category=CMS
+description=Veritabansız, düz dosya tabanlı hızlı modern CMS
+command=apt update && apt install -y php php-zip php-mbstring php-gd wget unzip && wget https://getgrav.org/download/core/grav/latest -O grav.zip && unzip grav.zip -d /var/www/html/
+
+[Git]
+version=2.43
+category=Geliştirme Aracı
+description=Dağıtık sürüm kontrol sistemi
+command=apt update && apt install -y git
+
+[GitLab CE]
+version=16.x
+category=Geliştirme Aracı
+description=Tam entegre DevOps platformu, kendi sunucunuzda Git yönetimi
+command=apt update && apt install -y curl openssh-server ca-certificates && curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash && apt install -y gitlab-ce
+
+[Gitea]
+version=1.21
+category=Geliştirme Aracı
+description=Hafif ve hızlı kendi kendine barındırılan Git servisi
+command=curl -Lo /usr/local/bin/gitea https://dl.gitea.com/gitea/1.21.3/gitea-1.21.3-linux-arm64 && chmod +x /usr/local/bin/gitea && mkdir -p /var/lib/gitea /etc/gitea
+
+[Gogs]
+version=0.13
+category=Geliştirme Aracı
+description=Go ile yazılmış minimalist kendi kendine barındırılan Git servisi
+command=curl -Lo gogs.tar.gz https://dl.gogs.io/0.13.0/gogs_0.13.0_linux_arm64.tar.gz && tar xzf gogs.tar.gz -C /opt/
+
+[Jenkins]
+version=2.x
+category=Geliştirme Aracı
+description=Sürekli entegrasyon ve teslimat için otomasyon sunucusu
+command=apt update && apt install -y openjdk-17-jdk && curl -fsSL https://pkg.jenkins.io/debian/jenkins.io-2023.key | tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null && echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian binary/" | tee /etc/apt/sources.list.d/jenkins.list > /dev/null && apt update && apt install -y jenkins
+
+[Drone CI]
+version=2.x
+category=Geliştirme Aracı
+description=Konteyner tabanlı sürekli teslimat platformu
+command=curl -Lo /usr/local/bin/drone https://github.com/drone/drone-cli/releases/latest/download/drone_linux_arm64.tar.gz && tar xzf drone_linux_arm64.tar.gz -C /usr/local/bin/
+
+[Jupyter Notebook]
+version=7.x
+category=Geliştirme Aracı
+description=Veri bilimi ve makine öğrenmesi için interaktif not defteri ortamı
+command=apt update && apt install -y python3-pip && pip3 install jupyter && jupyter notebook --allow-root
+
+[JupyterLab]
+version=4.x
+category=Geliştirme Aracı
+description=Jupyter Notebook'un modern ve kapsamlı web tabanlı IDE sürümü
+command=pip3 install jupyterlab && jupyter lab --allow-root
+
+[Code Server (VS Code)]
+version=4.x
+category=Geliştirme Aracı
+description=Tarayıcı üzerinden çalışan tam özellikli VS Code IDE
+command=curl -fsSL https://code-server.dev/install.sh | sh && code-server --bind-addr 0.0.0.0:8080 &
+
+[Fail2Ban]
+version=1.0
+category=Güvenlik
+description=Şüpheli aktiviteye karşı IP'leri otomatik engelleyen güvenlik aracı
+command=apt update && apt install -y fail2ban && fail2ban-client start
+
+[UFW (Firewall)]
+version=0.36
+category=Güvenlik
+description=Linux için basit ve kullanımı kolay güvenlik duvarı yönetim aracı
+command=apt update && apt install -y ufw && ufw enable
+
+[OpenSSL]
+version=3.x
+category=Güvenlik
+description=TLS/SSL şifreleme protokolleri için kapsamlı kriptografi araç seti
+command=apt update && apt install -y openssl
+
+[Certbot (Let's Encrypt)]
+version=2.x
+category=Güvenlik
+description=Let's Encrypt ücretsiz SSL sertifikası alma ve yenileme aracı
+command=apt update && apt install -y certbot python3-certbot-nginx
+
+[ClamAV]
+version=1.2
+category=Güvenlik
+description=Açık kaynak antivirüs motoru ve zararlı yazılım tarayıcı
+command=apt update && apt install -y clamav clamav-daemon && freshclam
+
+[rkhunter]
+version=1.4
+category=Güvenlik
+description=Rootkit, arka kapı ve yerel açık tarayıcı güvenlik aracı
+command=apt update && apt install -y rkhunter && rkhunter --update
+
+[Lynis]
+version=3.x
+category=Güvenlik
+description=Unix/Linux sistemleri için derinlemesine güvenlik denetim aracı
+command=apt update && apt install -y lynis && lynis audit system
+
+[Vault (HashiCorp)]
+version=1.15
+category=Güvenlik
+description=Gizli bilgileri ve şifreleme anahtarlarını güvenle yöneten araç
+command=curl -Lo vault.zip https://releases.hashicorp.com/vault/1.15.2/vault_1.15.2_linux_arm64.zip && unzip vault.zip && mv vault /usr/local/bin/
+
+[Authelia]
+version=4.37
+category=Güvenlik
+description=İki faktörlü kimlik doğrulama ve SSO portalı
+command=curl -Lo /usr/local/bin/authelia https://github.com/authelia/authelia/releases/latest/download/authelia-linux-arm64 && chmod +x /usr/local/bin/authelia
+
+[WireGuard]
+version=1.x
+category=Güvenlik
+description=Modern, hızlı ve basit VPN tünel çözümü
+command=apt update && apt install -y wireguard wireguard-tools
+
+[OpenVPN]
+version=2.6
+category=Güvenlik
+description=Esnek ve güvenli sanal özel ağ (VPN) oluşturma çözümü
+command=apt update && apt install -y openvpn
+
+[Netdata]
+version=1.44
+category=İzleme
+description=Gerçek zamanlı sistem performans izleme ve görselleştirme paneli
+command=curl https://my-netdata.io/kickstart.sh > /tmp/netdata-kickstart.sh && sh /tmp/netdata-kickstart.sh --non-interactive
+
+[Prometheus]
+version=2.48
+category=İzleme
+description=Zaman serisi veritabanı tabanlı sistem ve servis izleme araç seti
+command=curl -Lo prometheus.tar.gz https://github.com/prometheus/prometheus/releases/download/v2.48.0/prometheus-2.48.0.linux-arm64.tar.gz && tar xzf prometheus.tar.gz && mv prometheus-2.48.0.linux-arm64 /opt/prometheus && ln -s /opt/prometheus/prometheus /usr/local/bin/prometheus
+
+[Grafana]
+version=10.x
+category=İzleme
+description=Metrik verileri güzel panolarda görselleştiren analitik platform
+command=apt update && apt install -y apt-transport-https software-properties-common && wget -q -O /usr/share/keyrings/grafana.key https://apt.grafana.com/gpg.key && echo "deb [signed-by=/usr/share/keyrings/grafana.key] https://apt.grafana.com stable main" | tee /etc/apt/sources.list.d/grafana.list && apt update && apt install -y grafana && grafana-server &
+
+[Node Exporter]
+version=1.7
+category=İzleme
+description=Prometheus için donanım ve işletim sistemi metrikleri toplayıcı
+command=curl -Lo node_exporter.tar.gz https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-arm64.tar.gz && tar xzf node_exporter.tar.gz && mv node_exporter-*/node_exporter /usr/local/bin/
+
+[Loki]
+version=2.9
+category=İzleme
+description=Prometheus'a ilham alan yatay ölçeklenebilir log toplama sistemi
+command=curl -Lo loki.zip https://github.com/grafana/loki/releases/download/v2.9.3/loki-linux-arm64.zip && unzip loki.zip && mv loki-linux-arm64 /usr/local/bin/loki
+
+[Uptime Kuma]
+version=1.23
+category=İzleme
+description=Servis ve web sitesi erişilebilirliği için self-hosted izleme aracı
+command=apt update && apt install -y nodejs npm git && git clone https://github.com/louislam/uptime-kuma.git /opt/uptime-kuma && cd /opt/uptime-kuma && npm run setup && node server/server.js &
+
+[Zabbix]
+version=6.4
+category=İzleme
+description=Ağ, sunucu ve uygulama izleme için kapsamlı kurumsal platform
+command=curl -Lo zabbix-release.deb https://repo.zabbix.com/zabbix/6.4/debian/pool/main/z/zabbix-release/zabbix-release_6.4-1+debian12_all.deb && dpkg -i zabbix-release.deb && apt update && apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-nginx-conf zabbix-sql-scripts zabbix-agent
+
+[htop]
+version=3.x
+category=İzleme
+description=Renkli ve etkileşimli proses izleme terminal aracı
+command=apt update && apt install -y htop
+
+[Glances]
+version=3.x
+category=İzleme
+description=Sistem kaynaklarını tek ekranda gösteren Python tabanlı izleme aracı
+command=apt update && apt install -y python3-pip && pip3 install glances && glances -w
+
+[cAdvisor]
+version=0.47
+category=İzleme
+description=Konteyner kaynak kullanımını ve performansını izleme aracı
+command=curl -Lo cadvisor https://github.com/google/cadvisor/releases/latest/download/cadvisor-linux-arm64 && chmod +x cadvisor && mv cadvisor /usr/local/bin/
+
+[phpMyAdmin]
+version=5.2
+category=Veritabanı Yönetim
+description=MySQL/MariaDB için web tabanlı yönetim arayüzü
+command=apt update && apt install -y phpmyadmin
+
+[Adminer]
+version=4.8
+category=Veritabanı Yönetim
+description=Birden fazla DB destekli tek dosyalık hafif veritabanı yöneticisi
+command=mkdir -p /var/www/html/adminer && curl -Lo /var/www/html/adminer/index.php https://www.adminer.org/latest.php
+
+[pgAdmin4]
+version=7.x
+category=Veritabanı Yönetim
+description=PostgreSQL için web tabanlı kapsamlı veritabanı yönetim aracı
+command=curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub | gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg && sh -c 'echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list' && apt update && apt install -y pgadmin4-web
+
+[RedisInsight]
+version=2.x
+category=Veritabanı Yönetim
+description=Redis veritabanlarını görsel olarak yönetmek için web arayüzü
+command=curl -Lo redisinsight.deb https://downloads.redis.com/redis-insight/releases/latest/redisinsight-linux_arm64.deb && dpkg -i redisinsight.deb
+
+[Mongo Express]
+version=1.0
+category=Veritabanı Yönetim
+description=MongoDB için web tabanlı yönetim ve görüntüleme arayüzü
+command=apt update && apt install -y nodejs npm && npm install -g mongo-express
+
+[Postfix]
+version=3.7
+category=E-posta
+description=Yüksek performanslı ve güvenli SMTP e-posta sunucusu
+command=apt update && DEBIAN_FRONTEND=noninteractive apt install -y postfix
+
+[Dovecot]
+version=2.3
+category=E-posta
+description=Güvenli IMAP ve POP3 e-posta alım sunucusu
+command=apt update && apt install -y dovecot-imapd dovecot-pop3d
+
+[Roundcube]
+version=1.6
+category=E-posta
+description=IMAP destekli modern web tabanlı posta istemcisi
+command=apt update && apt install -y roundcube roundcube-mysql
+
+[Mailhog]
+version=1.0
+category=E-posta
+description=Geliştirme ortamı için e-posta yakalama ve test aracı
+command=curl -Lo /usr/local/bin/mailhog https://github.com/mailhog/MailHog/releases/latest/download/MailHog_linux_arm64 && chmod +x /usr/local/bin/mailhog && mailhog &
+
+[vsftpd]
+version=3.0
+category=FTP
+description=Güvenli ve hızlı Linux FTP sunucusu
+command=apt update && apt install -y vsftpd && vsftpd &
+
+[ProFTPD]
+version=1.3
+category=FTP
+description=Gelişmiş yapılandırma özellikleri olan güvenilir FTP sunucusu
+command=apt update && apt install -y proftpd-basic && proftpd &
+
+[Pure-FTPd]
+version=1.0
+category=FTP
+description=Güvenlik odaklı minimalist FTP sunucusu
+command=apt update && apt install -y pure-ftpd
+
+[FileBrowser]
+version=2.x
+category=FTP
+description=Web tabanlı dosya yöneticisi, kendi bulut depolama alternatifi
+command=curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash && filebrowser -r /var/www/html -a 0.0.0.0 -p 8088 &
+
+[Varnish Cache]
+version=7.4
+category=Cache
+description=HTTP önbellekleme ile web sitesi hızını dramatik artıran proxy
+command=apt update && apt install -y varnish && varnishd -a :6081 -f /etc/varnish/default.vcl &
+
+[Squid]
+version=6.x
+category=Cache
+description=HTTP, HTTPS ve FTP önbellekleme için güçlü proxy sunucu
+command=apt update && apt install -y squid && squid &
+
+[Nginx FastCGI Cache]
+version=1.24
+category=Cache
+description=Nginx ile PHP uygulamalarını önbelleğe alan FastCGI cache kurulumu
+command=apt update && apt install -y nginx php8.2-fpm && mkdir -p /var/cache/nginx/fastcgi
+
+[Elasticsearch]
+version=8.11
+category=Arama
+description=Dağıtık, yatay ölçeklenebilir tam metin arama ve analitik motoru
+command=curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg && echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | tee /etc/apt/sources.list.d/elastic-8.x.list && apt update && apt install -y elasticsearch
+
+[Meilisearch]
+version=1.5
+category=Arama
+description=Yıldırım hızında, ilgili sonuçlar sunan hafif arama motoru
+command=curl -L https://install.meilisearch.com | sh && ./meilisearch --master-key="MASTER_KEY" &
+
+[Apache Solr]
+version=9.4
+category=Arama
+description=Kurumsal düzeyde açık kaynak tam metin arama platformu
+command=apt update && apt install -y openjdk-17-jdk && curl -Lo solr.tgz https://downloads.apache.org/lucene/solr/9.4.0/solr-9.4.0.tgz && tar xzf solr.tgz && bash solr-9.4.0/bin/install_solr_service.sh solr.tgz
+
+[Typesense]
+version=0.25
+category=Arama
+description=Geliştirici dostu, bulut bağımsız hızlı arama motoru
+command=curl -Lo typesense-server.tar.gz https://dl.typesense.org/releases/0.25.2/typesense-server-0.25.2-linux-arm64.tar.gz && tar xzf typesense-server.tar.gz && ./typesense-server --data-dir /data/typesense --api-key=xyz &
+
+[RabbitMQ]
+version=3.12
+category=Mesaj Kuyruğu
+description=AMQP protokolü destekli güvenilir mesaj kuyruğu sistemi
+command=curl -1sLf "https://keys.openpgp.org/vks/v1/by-fingerprint/0A9AF2115F4687BD29803A206B73A36E6026DFCA" | gpg --dearmor | tee /usr/share/keyrings/com.rabbitmq.team.gpg > /dev/null && apt update && apt install -y rabbitmq-server && rabbitmq-server &
+
+[Apache Kafka]
+version=3.6
+category=Mesaj Kuyruğu
+description=Yüksek verimli dağıtık event akış ve mesajlaşma platformu
+command=apt update && apt install -y openjdk-17-jre && curl -Lo kafka.tgz https://downloads.apache.org/kafka/3.6.0/kafka_2.13-3.6.0.tgz && tar xzf kafka.tgz -C /opt/ && mv /opt/kafka_2.13-3.6.0 /opt/kafka
+
+[NATS]
+version=2.10
+category=Mesaj Kuyruğu
+description=Bulut yerel uygulamalar için yüksek performanslı mesajlaşma sistemi
+command=curl -Lo nats-server.zip https://github.com/nats-io/nats-server/releases/latest/download/nats-server-v2.10.6-linux-arm64.zip && unzip nats-server.zip && mv nats-server-*/nats-server /usr/local/bin/ && nats-server &
+
+[Mosquitto (MQTT)]
+version=2.0
+category=Mesaj Kuyruğu
+description=IoT cihazları için hafif MQTT mesaj broker uygulaması
+command=apt update && apt install -y mosquitto mosquitto-clients && mosquitto -d
+
+[Kong Gateway]
+version=3.5
+category=API Gateway
+description=Mikro servis mimarisi için ölçeklenebilir API gateway ve yönetim platformu
+command=curl -Lo kong.deb https://packages.konghq.com/public/gateway-35/deb/debian/pool/bookworm/main/k/ko/kong_3.5.0/kong-3.5.0.arm64.deb && dpkg -i kong.deb
+
+[Nginx API Gateway]
+version=1.24
+category=API Gateway
+description=Nginx tabanlı basit API ters proxy ve yönlendirme yapılandırması
+command=apt update && apt install -y nginx
+
+[Express.js]
+version=4.x
+category=API Gateway
+description=Node.js için minimalist ve esnek web uygulama çerçevesi
+command=apt update && apt install -y nodejs npm && npm install -g express-generator
+
+[FastAPI]
+version=0.104
+category=API Gateway
+description=Python ile modern ve hızlı REST API geliştirme çerçevesi
+command=pip3 install fastapi uvicorn
+
+[Flask]
+version=3.0
+category=API Gateway
+description=Python için sade ve hafif mikro web uygulama çerçevesi
+command=pip3 install flask
+
+[Django]
+version=5.0
+category=API Gateway
+description=Python'un tam özellikli web geliştirme çerçevesi
+command=pip3 install django djangorestframework
+
+[Rails (Ruby on Rails)]
+version=7.1
+category=API Gateway
+description=Hızlı geliştirmeye odaklanan MVC tabanlı Ruby web çerçevesi
+command=apt update && apt install -y ruby ruby-dev && gem install rails
+
+[Laravel]
+version=10.x
+category=API Gateway
+description=Zarif PHP web uygulama geliştirme çerçevesi
+command=apt update && apt install -y php8.2 composer && composer create-project laravel/laravel app
+
+[Symfony]
+version=7.0
+category=API Gateway
+description=Kurumsal PHP web uygulamaları için bileşen tabanlı çerçeve
+command=curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | bash && apt install -y symfony-cli
+
+[Actix Web]
+version=4.x
+category=API Gateway
+description=Rust ile yazılmış en hızlı web uygulama çerçevelerinden biri
+command=curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && cargo new actix-app && cd actix-app && cargo add actix-web
+
+[Docker]
+version=24.x
+category=Konteyner
+description=Uygulamaları izole konteynerler içinde çalıştıran platform
+command=curl -fsSL https://get.docker.com | sh
+
+[Docker Compose]
+version=2.x
+category=Konteyner
+description=Çok konteynerli Docker uygulamalarını tanımlama ve yönetme aracı
+command=apt update && apt install -y docker-compose-plugin
+
+[Podman]
+version=4.x
+category=Konteyner
+description=Root'suz, daemon'sız OCI konteyner yönetim aracı
+command=apt update && apt install -y podman
+
+[Portainer]
+version=2.19
+category=Konteyner
+description=Docker ve Kubernetes için web tabanlı konteyner yönetim arayüzü
+command=docker volume create portainer_data && docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
+
+[Kubernetes (k3s)]
+version=1.28
+category=Konteyner
+description=Kaynak verimli, tam işlevsel hafif Kubernetes dağıtımı
+command=curl -sfL https://get.k3s.io | sh -
+
+[Nextcloud]
+version=27
+category=Bulut Depolama
+description=Kendi sunucunuzda tam özellikli bulut depolama ve işbirliği platformu
+command=apt update && apt install -y apache2 php8.2 php8.2-gd php8.2-mysql php8.2-curl php8.2-mbstring php8.2-zip php8.2-xml php8.2-bz2 mariadb-server wget && wget https://download.nextcloud.com/server/releases/latest.zip && unzip latest.zip -d /var/www/html/
+
+[Seafile]
+version=10.x
+category=Bulut Depolama
+description=Yüksek performanslı open source dosya senkronizasyon ve paylaşım platformu
+command=pip3 install Pillow && curl -Lo seafile-server.tar.gz https://s3.eu-central-1.amazonaws.com/download.seadrive.org/seafile-server_10.0.1_x86-64.tar.gz && tar xzf seafile-server.tar.gz -C /opt/
+
+[Syncthing]
+version=1.27
+category=Bulut Depolama
+description=Sunucu gerektirmeyen peer-to-peer dosya senkronizasyon programı
+command=curl -s https://syncthing.net/release-key.txt | gpg --dearmor | tee /usr/share/keyrings/syncthing-archive-keyring.gpg > /dev/null && echo "deb [signed-by=/usr/share/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | tee /etc/apt/sources.list.d/syncthing.list && apt update && apt install -y syncthing
+
+[Rclone]
+version=1.65
+category=Bulut Depolama
+description=40'tan fazla bulut depolama ile dosya yönetim ve senkronizasyon aracı
+command=curl https://rclone.org/install.sh | bash
+
+[Jellyfin]
+version=10.8
+category=Medya Sunucu
+description=Ücretsiz ve özgür medya sistemi, Plex alternatifi
+command=curl https://repo.jellyfin.org/install-debuntu.sh | bash
+
+[Plex Media Server]
+version=1.32
+category=Medya Sunucu
+description=Film, müzik ve fotoğrafları her cihazda izlemek için medya sunucusu
+command=curl -Lo plex.deb https://downloads.plex.tv/plex-media-server-new/latest/debian/plexmediaserver_0.0.0.0_arm64.deb && dpkg -i plex.deb
+
+[Emby]
+version=4.8
+category=Medya Sunucu
+description=Kişisel medya koleksiyonu için organize ve akış sunucusu
+command=curl -Lo emby.deb https://github.com/MediaBrowser/Emby.Releases/releases/latest/download/emby-server-deb_4.8.0.0_arm64.deb && dpkg -i emby.deb
+
+[Owncast]
+version=0.1
+category=Medya Sunucu
+description=Kendi sunucunuzda canlı video yayını ve sohbet platformu
+command=curl -s https://owncast.online/install.sh | bash
+
+[Wget]
+version=1.21
+category=Yardımcı Araç
+description=HTTP, HTTPS ve FTP üzerinden dosya indirme komut satırı aracı
+command=apt update && apt install -y wget
+
+[cURL]
+version=8.x
+category=Yardımcı Araç
+description=URL sözdizimi destekli veri aktarım komut satırı aracı
+command=apt update && apt install -y curl
+
+[rsync]
+version=3.2
+category=Yardımcı Araç
+description=Yerel ve uzak sistemler arası verimli dosya eşitleme aracı
+command=apt update && apt install -y rsync
+
+[Midnight Commander]
+version=4.8
+category=Yardımcı Araç
+description=İki panelli görsel terminal dosya yöneticisi
+command=apt update && apt install -y mc
+
+[tmux]
+version=3.3
+category=Yardımcı Araç
+description=Birden fazla terminal oturumunu tek pencerede yöneten çoklayıcı
+command=apt update && apt install -y tmux
+
+[screen]
+version=4.9
+category=Yardımcı Araç
+description=SSH bağlantısı kesilse bile çalışmaya devam eden terminal çoklayıcı
+command=apt update && apt install -y screen
+
+[Supervisor]
+version=4.2
+category=Yardımcı Araç
+description=Süreçlerin otomatik başlatılmasını ve izlenmesini sağlayan araç
+command=apt update && apt install -y supervisor && supervisord -c /etc/supervisor/supervisord.conf
+
+[Cron]
+version=3.0pl1
+category=Yardımcı Araç
+description=Zamanlı görevleri otomatik çalıştıran unix iş planlayıcısı
+command=apt update && apt install -y cron && service cron start
+
+[logrotate]
+version=3.21
+category=Yardımcı Araç
+description=Log dosyalarını otomatik döndüren, sıkıştıran ve temizleyen araç
+command=apt update && apt install -y logrotate
+
+[jq]
+version=1.7
+category=Yardımcı Araç
+description=JSON verilerini işlemek için hafif komut satırı aracı
+command=apt update && apt install -y jq
+
+[zip & unzip]
+version=3.0
+category=Yardımcı Araç
+description=Zip arşivi oluşturma ve açma araçları
+command=apt update && apt install -y zip unzip
+
+[7zip]
+version=22.x
+category=Yardımcı Araç
+description=Yüksek sıkıştırma oranlı çoklu format destekli arşiv aracı
+command=apt update && apt install -y 7zip
+
+[net-tools]
+version=2.0
+category=Yardımcı Araç
+description=ifconfig, netstat gibi klasik ağ tanılama araçları koleksiyonu
+command=apt update && apt install -y net-tools
+
+[nmap]
+version=7.94
+category=Yardımcı Araç
+description=Ağ keşfi ve güvenlik denetimi için tarama aracı
+command=apt update && apt install -y nmap
+
+[iperf3]
+version=3.15
+category=Yardımcı Araç
+description=Ağ bant genişliği ve performansını ölçen test aracı
+command=apt update && apt install -y iperf3
+
+[tree]
+version=2.1
+category=Yardımcı Araç
+description=Dizin yapısını ağaç şeklinde gösteren terminal aracı
+command=apt update && apt install -y tree
+
+[neofetch]
+version=7.1
+category=Yardımcı Araç
+description=Sistem bilgilerini renkli ve şık şekilde gösteren bilgi aracı
+command=apt update && apt install -y neofetch
+
+[ncdu]
+version=2.x
+category=Yardımcı Araç
+description=Disk kullanımını görsel olarak analiz eden terminal aracı
+command=apt update && apt install -y ncdu
+
+[lsof]
+version=4.95
+category=Yardımcı Araç
+description=Açık dosyalar ve ağ bağlantılarını listeleyen tanılama aracı
+command=apt update && apt install -y lsof
+
+[Webmin]
+version=2.x
+category=Panel
+description=Unix/Linux sistem yönetimi için kapsamlı web tabanlı kontrol paneli
+command=curl -o setup-repos.sh https://raw.githubusercontent.com/webmin/webmin/master/setup-repos.sh && sh setup-repos.sh && apt install -y webmin
+
+[Cockpit]
+version=310
+category=Panel
+description=Sunucu yönetimi için modern ve minimalist web arayüzü
+command=apt update && apt install -y cockpit && systemctl enable --now cockpit.socket
+
+[Dasherr]
+version=1.x
+category=Panel
+description=Sunucu uygulamalarını tek ekranda gösteren minimalist başlangıç sayfası
+command=docker run -d -p 3000:3000 --name dasherr eriktunstall/dasherr
+
+[Homer]
+version=23.x
+category=Panel
+description=Servisleriniz için YAML tabanlı statik başlangıç sayfası
+command=docker run -d -p 8080:8080 -v /opt/homer/assets:/www/assets b4bz/homer:latest
+
+[Heimdall]
+version=2.5
+category=Panel
+description=Uygulama bağlantılarını düzenlemek için şık başlangıç sayfası
+command=docker run -d -p 80:80 -p 443:443 -v /opt/heimdall:/config lscr.io/linuxserver/heimdall:latest
+
+[BorgBackup]
+version=1.4
+category=Yedekleme
+description=Tekilleştirme ve şifreleme destekli verimli yedekleme aracı
+command=apt update && apt install -y borgbackup
+
+[Restic]
+version=0.16
+category=Yedekleme
+description=Hızlı, güvenli ve verimli şifreli yedekleme programı
+command=apt update && apt install -y restic
+
+[Duplicati]
+version=2.x
+category=Yedekleme
+description=Şifreli yedekleri buluta gönderen web arayüzlü yedekleme aracı
+command=apt update && apt install -y mono-runtime && curl -Lo duplicati.deb https://github.com/duplicati/duplicati/releases/latest/download/duplicati_2.0.7.1_all.deb && dpkg -i duplicati.deb
+
+[Amanda]
+version=3.5
+category=Yedekleme
+description=Ağ tabanlı açık kaynak kurumsal yedekleme çözümü
+command=apt update && apt install -y amanda-server amanda-client
+
+[Bacula]
+version=13.x
+category=Yedekleme
+description=Kurumsal düzeyde ağ yedekleme ve kurtarma sistemi
+command=apt update && apt install -y bacula-server bacula-client
+
+[Taiga]
+version=6.x
+category=Proje Yönetimi
+description=Agile takımlar için açık kaynak proje yönetim platformu
+command=apt update && apt install -y docker.io docker-compose && curl -Lo taiga-docker.zip https://github.com/kaleidos-ventures/taiga-docker/archive/refs/heads/main.zip && unzip taiga-docker.zip && cd taiga-docker-main && docker-compose up -d
+
+[Plane]
+version=0.20
+category=Proje Yönetimi
+description=Linear ve Jira alternatifi açık kaynak proje izleme aracı
+command=curl -fsSL https://raw.githubusercontent.com/makeplane/plane/master/deploy/selfhost/install.sh | bash
+
+[Mattermost]
+version=8.x
+category=İletişim
+description=Kurumsal açık kaynak takım mesajlaşma ve iş birliği platformu
+command=curl -fsSL -o mattermost.tar.gz https://releases.mattermost.com/8.1.5/mattermost-8.1.5-linux-arm64.tar.gz && tar -xvzf mattermost.tar.gz -C /opt/
+
+[Rocket.Chat]
+version=6.x
+category=İletişim
+description=Kurulabilir açık kaynak ekip iletişim ve sohbet platformu
+command=apt update && apt install -y nodejs npm && npm install -g @rocket.chat/cli && rc-server create
+
+[Jitsi Meet]
+version=latest
+category=İletişim
+description=Güvenli, kendi sunucunuzda çalışan görüntülü konferans çözümü
+command=curl https://download.jitsi.org/jitsi-key.gpg.key | gpg --dearmor > /usr/share/keyrings/jitsi-keyring.gpg && echo 'deb [signed-by=/usr/share/keyrings/jitsi-keyring.gpg] https://download.jitsi.org stable/' > /etc/apt/sources.list.d/jitsi-stable.list && apt update && apt install -y jitsi-meet
