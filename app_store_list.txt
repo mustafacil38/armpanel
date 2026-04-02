@@ -1,39 +1,3 @@
-[Nginx]
-version=1.24
-category=Web Sunucu
-description=Yüksek performanslı, hafif HTTP ve ters proxy sunucusu
-command=apt update && apt install -y nginx && nginx
-
-[Apache2]
-version=2.4
-category=Web Sunucu
-description=Dünya genelinde en yaygın kullanılan web sunucusu
-command=apt update && apt install -y apache2 && apache2ctl start
-
-[Lighttpd]
-version=1.4
-category=Web Sunucu
-description=Düşük bellek tüketimiyle hızlı ve hafif web sunucusu
-command=apt update && apt install -y lighttpd && lighttpd -f /etc/lighttpd/lighttpd.conf
-
-[Caddy]
-version=2.x
-category=Web Sunucu
-description=Otomatik HTTPS destekli modern web sunucusu
-command=apt update && apt install -y debian-keyring debian-archive-keyring apt-transport-https curl && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && apt update && apt install -y caddy
-
-[HAProxy]
-version=2.8
-category=Web Sunucu
-description=Yüksek kullanılabilirlik için yük dengeleyici ve proxy
-command=apt update && apt install -y haproxy
-
-[Traefik]
-version=2.x
-category=Web Sunucu
-description=Modern HTTP ters proxy ve yük dengeleyici
-command=curl -Lo /usr/local/bin/traefik https://github.com/traefik/traefik/releases/latest/download/traefik_linux_arm64 && chmod +x /usr/local/bin/traefik
-
 [MariaDB]
 version=10.11
 category=Veritabanı
@@ -117,12 +81,6 @@ version=20 LTS
 category=Programlama Dili
 description=JavaScript'i sunucu tarafında çalıştıran V8 tabanlı runtime
 command=curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt install -y nodejs
-
-[PHP 8.2]
-version=8.2
-category=Programlama Dili
-description=Yaygın kullanılan sunucu taraflı web programlama dili
-command=apt update && apt install -y php8.2 php8.2-cli php8.2-common php8.2-curl php8.2-mbstring php8.2-xml php8.2-mysql php8.2-gd php8.2-zip php8.2-fpm
 
 [Ruby]
 version=3.2
@@ -248,7 +206,7 @@ command=curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y 
 version=6.4
 category=CMS
 description=Dünyanın en çok kullanılan açık kaynak blog ve web sitesi platformu
-command=apt update && apt install -y wget php-mysql && wget https://wordpress.org/latest.tar.gz && tar xzf latest.tar.gz -C /var/www/html/
+command=apt update && apt install -y wget && wget https://wordpress.org/latest.tar.gz && tar xzf latest.tar.gz -C /var/www/html/
 
 [Drupal]
 version=10
@@ -284,13 +242,13 @@ command=npm init directus-project@latest directus-app
 version=2.x
 category=CMS
 description=Hafif API odaklı PHP tabanlı headless içerik yönetim sistemi
-command=apt update && apt install -y php php-sqlite3 php-gd php-curl && curl https://getcockpit.com/start.php | php && mv cockpit /var/www/html/
+command=apt update && apt install -y php-gd php-curl && curl https://getcockpit.com/start.php | php && mv cockpit /var/www/html/
 
 [Grav CMS]
 version=1.7
 category=CMS
 description=Veritabansız, düz dosya tabanlı hızlı modern CMS
-command=apt update && apt install -y php php-zip php-mbstring php-gd wget unzip && wget https://getgrav.org/download/core/grav/latest -O grav.zip && unzip grav.zip -d /var/www/html/
+command=apt update && apt install -y php-zip php-mbstring php-gd wget unzip && wget https://getgrav.org/download/core/grav/latest -O grav.zip && unzip grav.zip -d /var/www/html/
 
 [Git]
 version=2.43
@@ -448,12 +406,6 @@ category=İzleme
 description=Servis ve web sitesi erişilebilirliği için self-hosted izleme aracı
 command=apt update && apt install -y nodejs npm git && git clone https://github.com/louislam/uptime-kuma.git /opt/uptime-kuma && cd /opt/uptime-kuma && npm run setup && node server/server.js &
 
-[Zabbix]
-version=6.4
-category=İzleme
-description=Ağ, sunucu ve uygulama izleme için kapsamlı kurumsal platform
-command=curl -Lo zabbix-release.deb https://repo.zabbix.com/zabbix/6.4/debian/pool/main/z/zabbix-release/zabbix-release_6.4-1+debian12_all.deb && dpkg -i zabbix-release.deb && apt update && apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-nginx-conf zabbix-sql-scripts zabbix-agent
-
 [htop]
 version=3.x
 category=İzleme
@@ -562,12 +514,6 @@ category=Cache
 description=HTTP, HTTPS ve FTP önbellekleme için güçlü proxy sunucu
 command=apt update && apt install -y squid && squid &
 
-[Nginx FastCGI Cache]
-version=1.24
-category=Cache
-description=Nginx ile PHP uygulamalarını önbelleğe alan FastCGI cache kurulumu
-command=apt update && apt install -y nginx php8.2-fpm && mkdir -p /var/cache/nginx/fastcgi
-
 [Elasticsearch]
 version=8.11
 category=Arama
@@ -662,7 +608,7 @@ command=apt update && apt install -y ruby ruby-dev && gem install rails
 version=10.x
 category=API Gateway
 description=Zarif PHP web uygulama geliştirme çerçevesi
-command=apt update && apt install -y php8.2 composer && composer create-project laravel/laravel app
+command=apt update && apt install -y composer && composer create-project laravel/laravel app
 
 [Symfony]
 version=7.0
@@ -710,7 +656,7 @@ command=curl -sfL https://get.k3s.io | sh -
 version=27
 category=Bulut Depolama
 description=Kendi sunucunuzda tam özellikli bulut depolama ve işbirliği platformu
-command=apt update && apt install -y apache2 php8.2 php8.2-gd php8.2-mysql php8.2-curl php8.2-mbstring php8.2-zip php8.2-xml php8.2-bz2 mariadb-server wget && wget https://download.nextcloud.com/server/releases/latest.zip && unzip latest.zip -d /var/www/html/
+command=apt update && apt install -y wget https://download.nextcloud.com/server/releases/latest.zip && unzip latest.zip -d /var/www/html/
 
 [Seafile]
 version=10.x
