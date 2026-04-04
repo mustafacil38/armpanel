@@ -4,7 +4,6 @@ from database import init_db, migrate_db
 from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.services import services_bp
-from routes.installer import installer_bp
 from routes.settings import settings_bp
 import os
 
@@ -21,7 +20,6 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(services_bp)
-app.register_blueprint(installer_bp)
 app.register_blueprint(settings_bp)
 
 

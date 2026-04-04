@@ -47,17 +47,6 @@ def init_db():
         )
     """)
 
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS installed_apps (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            app_id TEXT UNIQUE NOT NULL,
-            name TEXT NOT NULL,
-            port TEXT DEFAULT '',
-            status TEXT DEFAULT 'installed',
-            installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
     # Seed default user
     existing = cur.execute("SELECT id FROM users LIMIT 1").fetchone()
     if not existing:
@@ -105,21 +94,8 @@ def migrate_db():
     ).fetchall()
     table_names = [t["name"] for t in tables]
 
-    # Add installed_apps table
-    if "installed_apps" not in table_names:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS installed_apps (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                app_id TEXT UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                port TEXT DEFAULT '',
-                status TEXT DEFAULT 'installed',
-                installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-    # Remove old container tables if they exist
-    for tbl in ["containers", "container_env", "container_volumes"]:
+    # Remove old installer/container tables
+    for tbl in ["installed_apps", "containers", "container_env", "container_volumes"]:
         if tbl in table_names:
             cur.execute(f"DROP TABLE IF EXISTS {tbl}")
 
@@ -132,36 +108,3 @@ def migrate_db():
 
     conn.commit()
     conn.close()
-
-
-# ── Installed Apps helpers ──
-
-def save_installed_app(app_id, name, port="", status="installed"):
-    conn = get_db()
-    try:
-        conn.execute(
-            """INSERT OR REPLACE INTO installed_apps (app_id, name, port, status, installed_at)
-               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)""",
-            (app_id, name, port, status),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def delete_installed_app(app_id):
-    conn = get_db()
-    try:
-        conn.execute("DELETE FROM installed_apps WHERE app_id = ?", (app_id,))
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def list_installed_apps():
-    conn = get_db()
-    try:
-        rows = conn.execute("SELECT * FROM installed_apps ORDER BY installed_at DESC").fetchall()
-        return [dict(r) for r in rows]
-    finally:
-        conn.close()
