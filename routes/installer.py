@@ -229,8 +229,8 @@ def _run_udocker(args, timeout=300):
 
 
 def _udocker_setup():
-    """Run udocker setup with P1 execmode (proot-compatible)."""
-    rc, out, err = _run_udocker(["setup", "--execmode=P1"], timeout=60)
+    """Run udocker setup with F1 execmode (fakechroot, proot icinde daha uyumlu)."""
+    rc, out, err = _run_udocker(["setup", "--execmode=F1"], timeout=60)
     return rc == 0, out + err
 
 
@@ -241,9 +241,17 @@ def _udocker_pull(image):
 
 
 def _udocker_run(name, image):
-    """Create and start a container in one step.
-    uDocker: run --name=NAME IMAGE"""
-    rc, out, err = _run_udocker(["run", f"--name={name}", image], timeout=120)
+    """Create and start a container with F1 execmode.
+    Entrypoint override ile proot uyumlu calistirilir."""
+    cmd = [
+        "run", "-d",
+        f"--name={name}",
+        "--execmode=F1",
+        "--hostauth",
+        "--nosysdirs",
+        image,
+    ]
+    rc, out, err = _run_udocker(cmd, timeout=120)
     return rc == 0, out + err
 
 
