@@ -294,14 +294,16 @@ def _is_installed(check_cmd):
 
 @installer_bp.route("/api/installer/apps", methods=["GET"])
 def list_apps():
-    """List all apps from CasaOS AppStore."""
+    """Sadece native kurulabilen uygulamalari dondur."""
     apps = _fetch_casaos_apps()
-    # Her app icin native kurulum destegi var mi ekle
+    native_apps = []
     for app in apps:
         native_name, native_def = _find_native_app(app["id"], app.get("compose_text", ""))
-        app["native_install"] = native_name is not None
-        app["native_name"] = native_name or ""
-    return jsonify(apps)
+        if native_def:
+            app["native_install"] = True
+            app["native_name"] = native_name
+            native_apps.append(app)
+    return jsonify(native_apps)
 
 
 @installer_bp.route("/api/installer/categories", methods=["GET"])
