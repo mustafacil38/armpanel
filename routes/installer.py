@@ -240,23 +240,10 @@ def _udocker_pull(image):
     return rc == 0, out + err
 
 
-def _udocker_create(name, image, extra_args=None):
-    """Create a container. uDocker create sadece --name ve image alir.
-    Port/env/volume icin 'run' komutu kullanilir."""
-    cmd = ["create", f"--name={name}", image]
-    rc, out, err = _run_udocker(cmd, timeout=120)
-    return rc == 0, out + err
-
-
-def _udocker_run(name, image, extra_args=None, timeout=120):
-    """Run a container with port/env/volume options.
-    uDocker run: --name=NAME --port=HOST:CONTAINER --env=KEY=VALUE --volume=HOST:CONTAINER IMAGE
-    """
-    cmd = ["run", "-d", f"--name={name}"]
-    if extra_args:
-        cmd.extend(extra_args)
-    cmd.append(image)
-    rc, out, err = _run_udocker(cmd, timeout=timeout)
+def _udocker_run(name, image):
+    """Create and start a container in one step.
+    uDocker: run --name=NAME IMAGE"""
+    rc, out, err = _run_udocker(["run", f"--name={name}", image], timeout=120)
     return rc == 0, out + err
 
 
@@ -383,8 +370,7 @@ def _parse_compose_for_udocker(compose_text, app_id, port_override=None):
 
     commands = [
         f"udocker pull {image}",
-        f"udocker create --name={container_name} {image}",
-        f"udocker start {container_name}",
+        f"udocker run --name={container_name} {image}",
     ]
 
     return {
@@ -469,15 +455,10 @@ def install_app():
     if not ok:
         return jsonify({"ok": False, "error": f"Pull failed: {msg}", "step": "pull"}), 500
 
-    # Step 2: Create
-    ok, msg = _udocker_create(app["container_name"], parsed["image"], parsed["create_args"])
+    # Step 2: Run (create + start in one step)
+    ok, msg = _udocker_run(app["container_name"], parsed["image"])
     if not ok:
-        return jsonify({"ok": False, "error": f"Create failed: {msg}", "step": "create"}), 500
-
-    # Step 3: Start
-    ok, msg = _udocker_start(app["container_name"])
-    if not ok:
-        return jsonify({"ok": False, "error": f"Start failed: {msg}", "step": "start"}), 500
+        return jsonify({"ok": False, "error": f"Run failed: {msg}", "step": "run"}), 500
 
     # Step 4: Save to database
     try:
