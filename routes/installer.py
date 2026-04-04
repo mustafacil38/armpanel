@@ -242,10 +242,12 @@ def _udocker_pull(image):
 
 def _udocker_run(name, image):
     """Create and start a container.
-    uDocker syntax: run --name=NAME IMAGE"""
+    Entrypoint bypass: --cmd ile /bin/sh -c ile arka plan modunda calistirilir.
+    Nested proot sorununu asmak icin entrypoint atlanir."""
     cmd = [
         "run",
         f"--name={name}",
+        "--cmd=/bin/sh -c 'while true; do sleep 3600; done'",
         image,
     ]
     rc, out, err = _run_udocker(cmd, timeout=120)
