@@ -48,9 +48,6 @@ instance/
 *.swp
 *.swo
 
-# uDocker
-.udocker/
-
 # Secrets
 .env
 *.key
