@@ -133,10 +133,6 @@ const Installer = {
                 ? `<img src="${app.icon}" onerror="this.parentElement.innerHTML='<i class=\\'fa-solid fa-cube\\'></i>'" style="width:50px;height:50px;border-radius:12px;object-fit:cover;">`
                 : `<i class="fa-solid fa-cube"></i>`;
 
-            const nativeBadge = app.native_install
-                ? `<span class="badge-category" style="font-size:0.65rem; background:rgba(34,197,94,0.1); color:#22c55e; padding:2px 8px; border-radius:16px; border:1px solid rgba(34,197,94,0.2); font-weight:500; white-space:nowrap;"><i class="fa-solid fa-bolt"></i> Native</span>`
-                : `<span class="badge-category" style="font-size:0.65rem; background:rgba(100,130,200,0.1); color:#8892a8; padding:2px 8px; border-radius:16px; border:1px solid rgba(100,130,200,0.2); font-weight:500; white-space:nowrap;">Docker only</span>`;
-
             return `
             <div class="card app-card slide-up" style="animation-delay:${i * 0.03}s; padding:18px;">
                 <div style="display:flex; gap:16px; align-items:flex-start;">
@@ -146,21 +142,15 @@ const Installer = {
                     <div class="app-info" style="flex:1; min-width:0;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:6px;">
                             <div class="app-name" style="font-weight:600; font-size:1rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${app.name}</div>
-                            <div style="display:flex; gap:4px;">
-                                ${nativeBadge}
-                                <span class="badge-category" style="font-size:0.65rem; background:rgba(0,212,255,0.1); color:#00d4ff; padding:2px 8px; border-radius:16px; border:1px solid rgba(0,212,255,0.2); font-weight:500; white-space:nowrap;">${app.category || 'Genel'}</span>
-                            </div>
+                            <span class="badge-category" style="font-size:0.65rem; background:rgba(0,212,255,0.1); color:#00d4ff; padding:2px 8px; border-radius:16px; border:1px solid rgba(0,212,255,0.2); font-weight:500; white-space:nowrap;">${app.category || 'Araç'}</span>
                         </div>
                         <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px;">
-                            ${app.port ? `Port: <span style="color:var(--accent-blue);">${app.port}</span>` : ''}
+                            ${app.port ? `Port: <span style="color:var(--accent-blue);">${app.port}</span>` : '<span style="color:var(--text-muted);">CLI aracı</span>'}
                         </div>
-                        <div class="app-description" style="font-size:0.82rem; line-height:1.4; color:var(--text-secondary); margin-bottom:12px; opacity:0.8; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${app.description || 'Açıklama yok'}</div>
-                        ${app.native_install
-                            ? `<button class="btn-install" onclick="Installer.install('${app.id}')" style="background:var(--gradient-brand); color:white; border:none; padding:7px 16px; border-radius:8px; cursor:pointer; font-weight:500; font-size:0.85rem; display:flex; align-items:center; gap:6px; width:fit-content;">
-                                   <i class="fa-solid fa-download"></i> Kur
-                               </button>`
-                            : `<span style="font-size:0.75rem; color:var(--text-muted);"><i class="fa-solid fa-info-circle"></i> Sadece Docker ile kurulabilir</span>`
-                        }
+                        <div class="app-description" style="font-size:0.82rem; line-height:1.4; color:var(--text-secondary); margin-bottom:12px; opacity:0.8;">${app.desc || app.description || ''}</div>
+                        <button class="btn-install" onclick="Installer.install('${app.id}')" style="background:var(--gradient-brand); color:white; border:none; padding:7px 16px; border-radius:8px; cursor:pointer; font-weight:500; font-size:0.85rem; display:flex; align-items:center; gap:6px; width:fit-content;">
+                            <i class="fa-solid fa-download"></i> Kur
+                        </button>
                     </div>
                 </div>
             </div>`;
