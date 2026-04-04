@@ -26,11 +26,14 @@ fi
 echo "[2/10] Temel sistem araçları kuruluyor..."
 apt update -y
 apt install -y curl wget git unzip zip tar \
-    software-properties-common apt-transport-https \
-    lsb-release ca-certificates gnupg procps \
+    apt-transport-https ca-certificates gnupg procps \
     sudo cron logrotate net-tools iproute2 \
-    htop tree ncdu jq nano less \
-    build-essential pkg-config
+    htop tree ncdu jq nano less 2>/dev/null || true
+
+# Eksik olabilecek paketleri ayrı ayrı dene
+for pkg in software-properties-common lsb-release build-essential pkg-config; do
+    apt install -y "$pkg" 2>/dev/null || echo "  -> $pkg bulunamadı, atlanıyor"
+done
 
 # ── 2. Python 3 + pip ──
 echo "[3/10] Python 3 ve pip kuruluyor..."
