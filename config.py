@@ -4,8 +4,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 SECRET_KEY = os.environ.get("ARMPANEL_SECRET", "armpanel-secret-key-change-me")
 DATABASE_PATH = os.path.join(BASE_DIR, "armpanel.db")
-APPS_FILE = os.path.join(BASE_DIR, "apps.txt")
-APPS_STORE_URL = "https://raw.githubusercontent.com/mustafacil38/armpanel/main/app_store_list.txt"
+
 
 PANEL_HOST = "0.0.0.0"
 PANEL_PORT = 1569

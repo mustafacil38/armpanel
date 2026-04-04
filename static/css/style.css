@@ -1345,3 +1345,10 @@ input:checked + .slider:before {
     background: rgba(0, 212, 255, 0.1);
     color: var(--accent-cyan);
 }
+
+/* ===== INSTALLER TABS ===== */
+.installer-tab.active {
+    background: rgba(0, 212, 255, 0.1) !important;
+    color: var(--accent-cyan) !important;
+    border-color: rgba(0, 212, 255, 0.3) !important;
+}

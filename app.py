@@ -1,6 +1,6 @@
 from flask import Flask, send_from_directory, session, jsonify, redirect
 from config import SECRET_KEY, PANEL_HOST, PANEL_PORT
-from database import init_db
+from database import init_db, migrate_db
 from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.services import services_bp
@@ -85,6 +85,7 @@ def auto_start_all():
 
 if __name__ == "__main__":
     init_db()
+    migrate_db()
     # Otomatik başlatma fonksiyonunu çağır
     auto_start_all()
     

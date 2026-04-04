@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -27,6 +26,7 @@ venv/
 ENV/
 
 # Database
+armpanel.db
 armpanel.db-wal
 armpanel.db-shm
 
@@ -41,3 +41,21 @@ Thumbs.db
 # Flask
 instance/
 .webassets-cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# uDocker
+.udocker/
+
+# Secrets
+.env
+*.key
+*.pem
+
+# Temporary files
+*.tmp
+*.pid
