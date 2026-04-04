@@ -212,11 +212,7 @@ def _fetch_casaos_apps(force=False):
 
 
 def _run_udocker(args, timeout=300):
-    """Run a udocker command as the 'udocker' user and return (returncode, stdout, stderr).
-
-    uDocker root olarak calismaz. Proot icinde 'udocker' kullanicisi uzerinden
-    'su - udocker -c ...' ile calistirilir.
-    """
+    """Run a udocker command as the 'udocker' user."""
     inner_cmd = "udocker " + " ".join(args)
     cmd = ["su", "-", "udocker", "-c", inner_cmd]
     try:
@@ -233,8 +229,8 @@ def _run_udocker(args, timeout=300):
 
 
 def _udocker_setup():
-    """Run udocker setup if not already done."""
-    rc, out, err = _run_udocker(["setup"], timeout=60)
+    """Run udocker setup with P1 execmode (proot-compatible)."""
+    rc, out, err = _run_udocker(["setup", "--execmode=P1"], timeout=60)
     return rc == 0, out + err
 
 
@@ -245,14 +241,11 @@ def _udocker_pull(image):
 
 
 def _udocker_create(name, image, extra_args=None):
-    """Create a container from an image.
-
-    Proot uyumlu: --execmode=P1 (proot-based extraction) kullanır.
-    Rootsuz cihazlarda F1 (fakechroot) veya P1 modu çalışır.
-    """
-    cmd = ["create", f"--name={name}", "--execmode=P1", image]
+    """Create a container. extra_args should be uDocker flags (--port, --env, --volume)."""
+    cmd = ["create", f"--name={name}"]
     if extra_args:
-        cmd = ["create", f"--name={name}", "--execmode=P1"] + extra_args + [image]
+        cmd.extend(extra_args)
+    cmd.append(image)
     rc, out, err = _run_udocker(cmd, timeout=120)
     return rc == 0, out + err
 
@@ -303,12 +296,13 @@ def _udocker_logs(name, tail=100):
 
 
 def _parse_compose_for_udocker(compose_text, app_id, port_override=None):
-    """Parse docker-compose.yml with pyyaml and generate udocker commands.
+    """Parse docker-compose.yml with pyyaml and generate uDocker commands.
 
-    Proot/rootsuz ortam uyumlu:
-    - /dev/ device mountları atlanır
-    - privileged mod kaldırılır
-    - network_mode host yerine bridge tercih edilir
+    uDocker CLI syntax:
+      --port=HOST:CONTAINER
+      --env=KEY=VALUE
+      --volume=HOST:CONTAINER
+      --execmode=P1 (setup komutunda, create'da degil)
     """
     try:
         compose = yaml.safe_load(compose_text)
@@ -318,7 +312,6 @@ def _parse_compose_for_udocker(compose_text, app_id, port_override=None):
     if not compose or "services" not in compose:
         return None, "No services found in compose file"
 
-    # Get first service definition
     service_name = list(compose["services"].keys())[0]
     service = compose["services"][service_name]
 
@@ -328,93 +321,79 @@ def _parse_compose_for_udocker(compose_text, app_id, port_override=None):
 
     container_name = service.get("container_name", app_id.lower().replace(" ", "_").replace("-", "_"))
 
+    # --- Environment ---
     env_args = []
     env = service.get("environment", {})
     if isinstance(env, dict):
         for k, v in env.items():
-            env_args.extend(["-e", f"{k}={v}"])
+            env_args.append(f"--env={k}={v}")
     elif isinstance(env, list):
         for item in env:
             item = str(item).strip()
             if "=" in item:
-                env_args.extend(["-e", item])
+                env_args.append(f"--env={item}")
             else:
-                env_args.extend(["-e", item])
+                env_args.append(f"--env={item}")
 
+    # --- Ports ---
     port_args = []
     first_port = ""
     ports = service.get("ports", [])
     if isinstance(ports, list):
         for p in ports:
-            p_str = str(p)
-            # Handle "host:container" format
+            p_str = str(p).replace("'", "").replace('"', "")
             if ":" in p_str:
-                parts = p_str.replace("'", "").replace('"', "").split(":")
+                parts = p_str.split(":")
                 host_port = parts[-2] if len(parts) >= 2 else parts[0]
+                container_port = parts[-1]
                 first_port = first_port or host_port
-                port_args.extend(["-p", host_port])
+                port_args.append(f"--port={host_port}:{container_port}")
             else:
-                host_port = p_str.replace("'", "").replace('"', "")
-                first_port = first_port or host_port
-                port_args.extend(["-p", host_port])
+                first_port = first_port or p_str
+                port_args.append(f"--port={p_str}:{p_str}")
 
-    # Also check ports under deploy/ports (long syntax)
-    if not port_args:
-        deploy = service.get("deploy", {})
-        if isinstance(deploy, dict):
-            resources = deploy.get("resources", {})
-            # No port info in deploy usually, skip
-
-    # Check x-casaos port_map as fallback
+    # x-casaos port_map fallback
     if not first_port:
         x_casaos = compose.get("x-casaos", {})
         if isinstance(x_casaos, dict):
             port_map = x_casaos.get("port_map", "")
             if port_map:
-                first_port = str(port_map).replace("'", "").replace('"', "")
-                port_args.extend(["-p", first_port])
+                first_port = str(port_map)
+                port_args.append(f"--port={first_port}:{first_port}")
 
     if port_override:
-        for i, arg in enumerate(port_args):
-            if arg != "-p" and i > 0 and port_args[i - 1] == "-p":
-                port_args[i] = str(port_override)
+        for i in range(len(port_args)):
+            if port_args[i].startswith("--port="):
+                old = port_args[i].split("=", 1)[1]
+                if ":" in old:
+                    container_p = old.split(":")[1]
+                else:
+                    container_p = old
+                port_args[i] = f"--port={port_override}:{container_p}"
                 first_port = str(port_override)
                 break
 
+    # --- Volumes ---
     vol_args = []
     volumes = service.get("volumes", [])
     if isinstance(volumes, list):
         for v in volumes:
             if isinstance(v, dict):
-                src = v.get("source", "")
-                tgt = v.get("target", "")
-                if src and tgt:
-                    if str(src).startswith("/dev/") or str(src).startswith("/opt/vc"):
-                        continue
-                    vol_args.extend(["-v", f"{src}:{tgt}"])
-            elif isinstance(v, str):
-                if ":" in v:
-                    parts = v.split(":")
-                    src = parts[0]
-                    tgt = parts[1]
-                    if src.startswith("/dev/") or src.startswith("/opt/vc"):
-                        continue
-                    vol_args.extend(["-v", f"{src}:{tgt}"])
+                src = str(v.get("source", ""))
+                tgt = str(v.get("target", ""))
+                if src and tgt and not src.startswith("/dev/") and not src.startswith("/opt/vc"):
+                    vol_args.append(f"--volume={src}:{tgt}")
+            elif isinstance(v, str) and ":" in v:
+                parts = v.split(":")
+                src, tgt = parts[0], parts[1]
+                if not src.startswith("/dev/") and not src.startswith("/opt/vc"):
+                    vol_args.append(f"--volume={src}:{tgt}")
 
-    net_mode = service.get("network_mode", "")
-
-    create_args = []
-    if net_mode == "host":
-        # Proot'ta host network sorunlu olabilir, bridge daha güvenli
-        pass
-
-    create_args.extend(port_args)
-    create_args.extend(env_args)
-    create_args.extend(vol_args)
+    create_args = port_args + env_args + vol_args
 
     commands = [
         f"udocker pull {image}",
-        f"udocker create {' '.join(create_args)} --name={container_name} --execmode=P1 {image}",
+        f"udocker create --name={container_name} {' '.join(create_args)} {image}",
         f"udocker start {container_name}",
     ]
 
