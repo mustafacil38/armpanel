@@ -104,12 +104,21 @@ echo "  -> File Browser ${FB_VERSION} kuruldu"
 # ── 8. uDocker ──
 echo "[9/10] uDocker kuruluyor..."
 
-# uDocker Python ile kurulur (Termux/Debian proot uyumlu)
+# uDocker root olarak çalışmaz, non-root kullanıcı oluştur
+if ! id -u udocker &>/dev/null; then
+    useradd -m -s /bin/bash udocker 2>/dev/null || true
+fi
+
+# uDocker Python ile kurulur
 pip3 install udocker --break-system-packages
 
-# uDocker ilk başlatma ayarları
-udocker --help >/dev/null 2>&1 || true
-echo "  -> uDocker kuruldu"
+# uDocker kullanıcısının home dizinine yükle
+su - udocker -c "udocker --help" 2>/dev/null || true
+
+# /tmp uDocker için gerekli izinler
+chmod 1777 /tmp
+
+echo "  -> uDocker kuruldu (kullanıcı: udocker)"
 
 # ── 9. ArmPanel Projesi ──
 echo "[10/10] ArmPanel projesi kuruluyor..."

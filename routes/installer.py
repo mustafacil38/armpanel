@@ -212,11 +212,13 @@ def _fetch_casaos_apps(force=False):
 
 
 def _run_udocker(args, timeout=300):
-    """Run a udocker command and return (returncode, stdout, stderr).
+    """Run a udocker command as the 'udocker' user and return (returncode, stdout, stderr).
 
-    --insecure flagi eklenir: proot icinde root olarak calismak icin zorunlu.
+    uDocker root olarak calismaz. Proot icinde 'udocker' kullanicisi uzerinden
+    'su - udocker -c ...' ile calistirilir.
     """
-    cmd = ["udocker", "--insecure"] + args
+    inner_cmd = "udocker " + " ".join(args)
+    cmd = ["su", "-", "udocker", "-c", inner_cmd]
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout
@@ -225,7 +227,7 @@ def _run_udocker(args, timeout=300):
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
     except FileNotFoundError:
-        return -1, "", "udocker not found. Install it first."
+        return -1, "", "udocker or su not found."
     except Exception as e:
         return -1, "", str(e)
 
