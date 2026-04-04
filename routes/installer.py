@@ -499,16 +499,52 @@ def _is_installed(check_cmd):
 
 @installer_bp.route("/api/installer/apps", methods=["GET"])
 def list_apps():
-    """Sadece native kurulabilen uygulamalari dondur."""
+    """Native uygulama listesini dondur. CasaOS'tan ikon/aciklama zenginlestirilir."""
     apps = _fetch_casaos_apps()
-    native_apps = []
-    for app in apps:
-        native_name, native_def = _find_native_app(app["id"], app.get("compose_text", ""))
-        if native_def:
-            app["native_install"] = True
-            app["native_name"] = native_name
-            native_apps.append(app)
-    return jsonify(native_apps)
+    # CasaOS app'lerini map'le (icon, description, category icin)
+    casaos_map = {}
+    for a in apps:
+        casaos_map[a["id"].lower()] = a
+
+    result = []
+    for native_name, native_def in NATIVE_APPS.items():
+        # CasaOS'tan eslesen app bul (icon, category icin)
+        casaos_app = None
+        for app_id_lower, app_data in casaos_map.items():
+            if app_id_lower == native_name.lower():
+                casaos_app = app_data
+                break
+        if not casaos_app:
+            for img_key, n_name in IMAGE_TO_NATIVE.items():
+                if n_name == native_name:
+                    for app_id_lower, app_data in casaos_map.items():
+                        if img_key in app_data.get("image", "").lower():
+                            casaos_app = app_data
+                            break
+                    break
+
+        app_info = {
+            "id": native_name,
+            "name": native_name,
+            "desc": native_def.get("desc", ""),
+            "port": native_def.get("port", ""),
+            "category": "Araç",
+            "icon": "",
+            "description": "",
+            "version": "latest",
+            "native_install": True,
+            "native_name": native_name,
+        }
+
+        if casaos_app:
+            app_info["icon"] = casaos_app.get("icon", "")
+            app_info["description"] = casaos_app.get("description", "")
+            if casaos_app.get("category"):
+                app_info["category"] = casaos_app["category"]
+
+        result.append(app_info)
+
+    return jsonify(result)
 
 
 @installer_bp.route("/api/installer/categories", methods=["GET"])
