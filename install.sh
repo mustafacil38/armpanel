@@ -101,24 +101,9 @@ chmod +x /usr/local/bin/filebrowser
 rm -f /tmp/filebrowser.tar.gz /tmp/LICENSE /tmp/README.md
 echo "  -> File Browser ${FB_VERSION} kuruldu"
 
-# ── 8. uDocker ──
-echo "[9/10] uDocker kuruluyor..."
-
-# uDocker root olarak çalışmaz, non-root kullanıcı oluştur
-if ! id -u udocker &>/dev/null; then
-    useradd -m -s /bin/bash udocker 2>/dev/null || true
-fi
-
-# uDocker Python ile kurulur
-pip3 install udocker --break-system-packages
-
-# uDocker kullanıcısının home dizinine yükle
-su - udocker -c "udocker --help" 2>/dev/null || true
-
-# /tmp uDocker için gerekli izinler
-chmod 1777 /tmp
-
-echo "  -> uDocker kuruldu (kullanıcı: udocker)"
+# ── 8. Node.js (Node-RED ve diger Node.js uygulamalari icin) ──
+echo "[9/10] Node.js kuruluyor..."
+apt install -y nodejs npm 2>/dev/null || echo "  -> Node.js kurulamadı, atlanıyor"
 
 # ── 9. ArmPanel Projesi ──
 echo "[10/10] ArmPanel projesi kuruluyor..."
