@@ -242,14 +242,13 @@ def _udocker_pull(image):
 
 def _udocker_run(name, image):
     """Create and start a container.
-    Host'un /bin, /lib, /usr klasorleri mount edilir ki
-    nested proot entrypoint interpreter bulabilsin."""
+    Host'un sistem klasorleri mount edilir ki entrypoint interpreter bulunsun.
+    ARM64 uyumlu: /lib64 yoktur, sadece /bin /lib /usr."""
     cmd = [
         "run",
         f"--name={name}",
         "--volume=/bin:/bin",
         "--volume=/lib:/lib",
-        "--volume=/lib64:/lib64",
         "--volume=/usr:/usr",
         image,
     ]
