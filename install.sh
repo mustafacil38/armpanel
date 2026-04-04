@@ -5,7 +5,7 @@
 # NOT: Cihaz ROOTLU DEĞIL (bootloader kilitli). Proot ile çalışır.
 # ============================================================
 
-set -e
+# set -e KALDIRILDI - bazı paketler Debian 13'te mevcut değil, betik devam etsin
 
 echo ""
 echo "  +==========================================+"
