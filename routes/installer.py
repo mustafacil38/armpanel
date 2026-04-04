@@ -445,10 +445,8 @@ def install_app():
     # Check if container already exists
     ps_output = _udocker_ps()
     if app["container_name"] in ps_output:
-        return jsonify({
-            "ok": False,
-            "error": f"Container '{app['container_name']}' already exists. Remove it first."
-        }), 409
+        # Otomatik sil ve yeniden kur
+        _udocker_rm(app["container_name"])
 
     # Step 1: Pull
     ok, msg = _udocker_pull(parsed["image"])
@@ -458,7 +456,11 @@ def install_app():
     # Step 2: Run (create + start in one step)
     ok, msg = _udocker_run(app["container_name"], parsed["image"])
     if not ok:
-        return jsonify({"ok": False, "error": f"Run failed: {msg}", "step": "run"}), 500
+        # Run başarısızsa container silip tekrar dene
+        _udocker_rm(app["container_name"])
+        ok, msg = _udocker_run(app["container_name"], parsed["image"])
+        if not ok:
+            return jsonify({"ok": False, "error": f"Run failed: {msg}", "step": "run"}), 500
 
     # Step 4: Save to database
     try:
