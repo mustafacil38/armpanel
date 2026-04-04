@@ -242,13 +242,10 @@ def _udocker_pull(image):
 
 def _udocker_run(name, image):
     """Create and start a container.
-    uDocker syntax: run --name=NAME --execmode=F1 --hostauth --nosysdirs IMAGE"""
+    uDocker syntax: run --name=NAME IMAGE"""
     cmd = [
         "run",
         f"--name={name}",
-        "--execmode=F1",
-        "--hostauth",
-        "--nosysdirs",
         image,
     ]
     rc, out, err = _run_udocker(cmd, timeout=120)
