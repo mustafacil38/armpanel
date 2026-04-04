@@ -241,20 +241,27 @@ def _udocker_pull(image):
 
 
 def _udocker_create(name, image, extra_args=None):
-    """Create a container. extra_args should be uDocker flags (--port, --env, --volume)."""
-    cmd = ["create", f"--name={name}"]
-    if extra_args:
-        cmd.extend(extra_args)
-    cmd.append(image)
+    """Create a container. uDocker create sadece --name ve image alir.
+    Port/env/volume icin 'run' komutu kullanilir."""
+    cmd = ["create", f"--name={name}", image]
     rc, out, err = _run_udocker(cmd, timeout=120)
     return rc == 0, out + err
 
 
-def _udocker_start(name):
-    """Start a container.
-
-    Proot ortamında --execmode=P1 ile başlatmak daha uyumludur.
+def _udocker_run(name, image, extra_args=None, timeout=120):
+    """Run a container with port/env/volume options.
+    uDocker run: --name=NAME --port=HOST:CONTAINER --env=KEY=VALUE --volume=HOST:CONTAINER IMAGE
     """
+    cmd = ["run", "-d", f"--name={name}"]
+    if extra_args:
+        cmd.extend(extra_args)
+    cmd.append(image)
+    rc, out, err = _run_udocker(cmd, timeout=timeout)
+    return rc == 0, out + err
+
+
+def _udocker_start(name):
+    """Start a previously created container."""
     rc, out, err = _run_udocker(["start", name], timeout=60)
     return rc == 0, out + err
 
@@ -296,13 +303,16 @@ def _udocker_logs(name, tail=100):
 
 
 def _parse_compose_for_udocker(compose_text, app_id, port_override=None):
-    """Parse docker-compose.yml with pyyaml and generate uDocker commands.
+    """Parse docker-compose.yml and generate uDocker commands.
 
-    uDocker CLI syntax:
-      --port=HOST:CONTAINER
-      --env=KEY=VALUE
-      --volume=HOST:CONTAINER
-      --execmode=P1 (setup komutunda, create'da degil)
+    uDocker akisi:
+      1. udocker pull IMAGE
+      2. udocker create --name=NAME IMAGE   (sadece name + image)
+      3. udocker start NAME
+
+    uDocker P1 modunda container host network ile calisir,
+    port mapping gerekmez. Env ve volume create sonrasi
+    container filesystem'e yazilir.
     """
     try:
         compose = yaml.safe_load(compose_text)
@@ -321,60 +331,43 @@ def _parse_compose_for_udocker(compose_text, app_id, port_override=None):
 
     container_name = service.get("container_name", app_id.lower().replace(" ", "_").replace("-", "_"))
 
-    # --- Environment ---
-    env_args = []
-    env = service.get("environment", {})
-    if isinstance(env, dict):
-        for k, v in env.items():
-            env_args.append(f"--env={k}={v}")
-    elif isinstance(env, list):
-        for item in env:
-            item = str(item).strip()
-            if "=" in item:
-                env_args.append(f"--env={item}")
-            else:
-                env_args.append(f"--env={item}")
-
-    # --- Ports ---
-    port_args = []
+    # --- Port extraction (info only, uDocker P1'de host network kullanilir) ---
     first_port = ""
     ports = service.get("ports", [])
-    if isinstance(ports, list):
-        for p in ports:
-            p_str = str(p).replace("'", "").replace('"', "")
-            if ":" in p_str:
-                parts = p_str.split(":")
-                host_port = parts[-2] if len(parts) >= 2 else parts[0]
-                container_port = parts[-1]
-                first_port = first_port or host_port
-                port_args.append(f"--port={host_port}:{container_port}")
-            else:
-                first_port = first_port or p_str
-                port_args.append(f"--port={p_str}:{p_str}")
+    if isinstance(ports, list) and ports:
+        p = ports[0]
+        if isinstance(p, dict):
+            first_port = str(p.get("published", p.get("target", "")))
+        elif isinstance(p, str):
+            p_str = p.replace("'", "").replace('"', "")
+            first_port = p_str.split(":")[0] if ":" in p_str else p_str
+        elif isinstance(p, (int, float)):
+            first_port = str(int(p))
 
     # x-casaos port_map fallback
     if not first_port:
         x_casaos = compose.get("x-casaos", {})
         if isinstance(x_casaos, dict):
-            port_map = x_casaos.get("port_map", "")
-            if port_map:
-                first_port = str(port_map)
-                port_args.append(f"--port={first_port}:{first_port}")
+            pm = x_casaos.get("port_map", "")
+            if pm:
+                first_port = str(pm)
 
     if port_override:
-        for i in range(len(port_args)):
-            if port_args[i].startswith("--port="):
-                old = port_args[i].split("=", 1)[1]
-                if ":" in old:
-                    container_p = old.split(":")[1]
-                else:
-                    container_p = old
-                port_args[i] = f"--port={port_override}:{container_p}"
-                first_port = str(port_override)
-                break
+        first_port = str(port_override)
 
-    # --- Volumes ---
-    vol_args = []
+    # --- Environment (info only) ---
+    env_dict = {}
+    env = service.get("environment", {})
+    if isinstance(env, dict):
+        env_dict = {k: str(v) for k, v in env.items()}
+    elif isinstance(env, list):
+        for item in env:
+            if "=" in str(item):
+                k, v = str(item).split("=", 1)
+                env_dict[k.strip()] = v.strip()
+
+    # --- Volumes (info only) ---
+    vol_list = []
     volumes = service.get("volumes", [])
     if isinstance(volumes, list):
         for v in volumes:
@@ -382,18 +375,15 @@ def _parse_compose_for_udocker(compose_text, app_id, port_override=None):
                 src = str(v.get("source", ""))
                 tgt = str(v.get("target", ""))
                 if src and tgt and not src.startswith("/dev/") and not src.startswith("/opt/vc"):
-                    vol_args.append(f"--volume={src}:{tgt}")
+                    vol_list.append((src, tgt))
             elif isinstance(v, str) and ":" in v:
                 parts = v.split(":")
-                src, tgt = parts[0], parts[1]
-                if not src.startswith("/dev/") and not src.startswith("/opt/vc"):
-                    vol_args.append(f"--volume={src}:{tgt}")
-
-    create_args = port_args + env_args + vol_args
+                if not parts[0].startswith("/dev/") and not parts[0].startswith("/opt/vc"):
+                    vol_list.append((parts[0], parts[1]))
 
     commands = [
         f"udocker pull {image}",
-        f"udocker create --name={container_name} {' '.join(create_args)} {image}",
+        f"udocker create --name={container_name} {image}",
         f"udocker start {container_name}",
     ]
 
@@ -401,8 +391,10 @@ def _parse_compose_for_udocker(compose_text, app_id, port_override=None):
         "image": image,
         "container_name": container_name,
         "commands": commands,
-        "create_args": create_args,
+        "create_args": [],
         "port": first_port,
+        "env": env_dict,
+        "volumes": vol_list,
     }, None
 
 
