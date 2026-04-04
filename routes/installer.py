@@ -241,10 +241,10 @@ def _udocker_pull(image):
 
 
 def _udocker_run(name, image):
-    """Create and start a container with F1 execmode.
-    Entrypoint override ile proot uyumlu calistirilir."""
+    """Create and start a container.
+    uDocker syntax: run --name=NAME --execmode=F1 --hostauth --nosysdirs IMAGE"""
     cmd = [
-        "run", "-d",
+        "run",
         f"--name={name}",
         "--execmode=F1",
         "--hostauth",
