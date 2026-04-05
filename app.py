@@ -91,4 +91,4 @@ if __name__ == "__main__":
     print(f"  |     ArmPanel - Mobil Konsol          |")
     print(f"  |     http://localhost:{PANEL_PORT}            |")
     print(f"  +======================================+\n")
-    app.run(host=PANEL_HOST, port=PANEL_PORT, debug=True)
+    app.run(host=PANEL_HOST, port=PANEL_PORT, debug=False, use_reloader=False)

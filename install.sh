@@ -5,6 +5,11 @@
 # NOT: Cihaz ROOTLU DEĞIL (bootloader kilitli). Proot ile çalışır.
 # ============================================================
 
+if [ ! -d /dev/shm ]; then
+    mkdir -p /dev/shm 2>/dev/null || true
+    mount -t tmpfs tmpfs /dev/shm 2>/dev/null || true
+fi
+
 echo ""
 echo "=========================================="
 echo "  ArmPanel Kurulum Betigi"
