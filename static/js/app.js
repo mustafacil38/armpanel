@@ -126,6 +126,7 @@ const App = {
         switch (page) {
             case 'dashboard': Dashboard.render(main); break;
             case 'services': Services.render(main); break;
+            case 'store': Store.render(main); break;
             case 'settings': Settings.render(main); break;
             default:
                 main.innerHTML = '<div class="empty-state"><i class="fa-solid fa-compass"></i><p>Sayfa bulunamadı</p></div>';

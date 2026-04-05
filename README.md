@@ -1,6 +1,6 @@
 # ArmPanel - Mobil Konsol
 
-Mustafa'nın Mobil Konsolu, arm64 mimarili işlemcisi olan ve root erişimi olmayan Android cihazlarda Termux/Debian üzerinde çalışmak üzere geliştirilmiş modern bir web yönetim panelidir.
+Mustafa'nın Mobil Konsolu, arm64 mimarili işlemcisi olan ve root erişimi bulunan Android cihazlarda Debian 12 (Bookworm) üzerinde çalışmak üzere geliştirilmiş modern bir web yönetim panelidir.
 
 ## 🚀 Hızlı Başlangıç
 
@@ -31,7 +31,6 @@ pip install -r requirements.txt --break-system-packages
 ### 4. Paneli Başlatın
 ```bash
 python3 app.py
-python3.13 app.py
 ```
 
 Panel varsayılan olarak **1569** portunda çalışacaktır.

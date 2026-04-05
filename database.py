@@ -84,6 +84,41 @@ def init_db():
     conn.close()
 
 
+def install_store_app(app):
+    conn = get_db()
+    existing = conn.execute(
+        "SELECT id FROM services WHERE name = ?", (app["name"],)
+    ).fetchone()
+    if not existing:
+        conn.execute(
+            """INSERT INTO services
+               (name, icon, description, command_start, command_stop,
+                command_restart, process_name, default_port, config_files, is_autostart)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                app.get("name", ""),
+                app.get("icon", "fa-solid fa-cube"),
+                app.get("description", ""),
+                app.get("command_start", ""),
+                app.get("command_stop", ""),
+                app.get("command_restart", ""),
+                app.get("process_name", ""),
+                app.get("default_port", 0),
+                app.get("config_files", ""),
+                0,
+            ),
+        )
+        conn.commit()
+    conn.close()
+
+
+def uninstall_store_app(name):
+    conn = get_db()
+    conn.execute("DELETE FROM services WHERE name = ?", (name,))
+    conn.commit()
+    conn.close()
+
+
 def migrate_db():
     """Migrate existing database to latest schema without data loss."""
     conn = get_db()

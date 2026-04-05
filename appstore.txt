@@ -1,0 +1,289 @@
+=== APP ===
+name=WireGuard
+icon=fa-solid fa-shield-halved
+description=Hafif ve güvenli VPN tüneli
+default_port=51820
+config_files=/etc/wireguard/wg0.conf
+process_name=wg-quick
+command_start=wg-quick up wg0
+command_stop=wg-quick down wg0
+command_restart=wg-quick down wg0; sleep 2; wg-quick up wg0
+install_script=apt install -y wireguard-tools
+mkdir -p /etc/wireguard
+wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
+PRIV_KEY=$(cat /etc/wireguard/server_private.key)
+cat > /etc/wireguard/wg0.conf << WGEOF
+[Interface]
+Address = 10.0.0.1/24
+ListenPort = 51820
+PrivateKey = ${PRIV_KEY}
+SaveConfig = true
+WGEOF
+chmod 600 /etc/wireguard/wg0.conf /etc/wireguard/server_private.key
+uninstall_script=wg-quick down wg0 2>/dev/null || true
+apt remove -y wireguard-tools
+rm -rf /etc/wireguard
+=== END ===
+
+=== APP ===
+name=AdGuard Home
+icon=fa-solid fa-shield-halved
+description=Reklam ve izleme engelleyici DNS sunucusu
+default_port=3000
+config_files=/opt/adguardhome/AdGuardHome.yaml
+process_name=AdGuardHome
+command_start=/opt/adguardhome/AdGuardHome -c /opt/adguardhome/AdGuardHome.yaml -w /opt/adguardhome &
+command_stop=pkill -f AdGuardHome
+command_restart=pkill -f AdGuardHome; sleep 2; /opt/adguardhome/AdGuardHome -c /opt/adguardhome/AdGuardHome.yaml -w /opt/adguardhome &
+install_script=ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then AGH_ARCH="arm64"; else AGH_ARCH="amd64"; fi
+mkdir -p /opt/adguardhome
+AGH_VER=$(curl -s https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+wget "https://github.com/AdguardTeam/AdGuardHome/releases/download/v${AGH_VER}/AdGuardHome_linux_${AGH_ARCH}.tar.gz" -O /tmp/adguardhome.tar.gz
+tar xzf /tmp/adguardhome.tar.gz -C /tmp
+mv /tmp/AdGuardHome/AdGuardHome /opt/adguardhome/AdGuardHome
+chmod +x /opt/adguardhome/AdGuardHome
+rm -rf /tmp/AdGuardHome /tmp/adguardhome.tar.gz
+uninstall_script=pkill -f AdGuardHome 2>/dev/null || true
+rm -rf /opt/adguardhome
+=== END ===
+
+=== APP ===
+name=Nextcloud
+icon=fa-solid fa-cloud
+description=Kişisel bulut depolama platformu
+default_port=8081
+config_files=/var/www/nextcloud/config/config.php,/etc/nginx/sites-available/nextcloud
+process_name=php-fpm
+command_start=nginx -s reload; php-fpm8.2
+command_stop=pkill -f php-fpm
+command_restart=pkill -f php-fpm; sleep 1; php-fpm8.2; nginx -s reload
+install_script=mkdir -p /var/www/nextcloud /var/www/nextcloud/data
+wget "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/nextcloud.zip
+unzip -o /tmp/nextcloud.zip -d /tmp
+cp -r /tmp/nextcloud/* /var/www/nextcloud/
+chown -R www-data:www-data /var/www/nextcloud
+rm -rf /tmp/nextcloud /tmp/nextcloud.zip
+cat > /etc/php/8.2/fpm/conf.d/99-nextcloud.ini << 'PHPEOF'
+upload_max_filesize = 512M
+post_max_size = 512M
+memory_limit = 512M
+max_execution_time = 3600
+output_buffering = off
+PHPEOF
+cat > /etc/nginx/sites-available/nextcloud << 'NCEOF'
+server {
+    listen 8081;
+    server_name _;
+    root /var/www/nextcloud;
+    index index.php;
+    client_max_body_size 512M;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Referrer-Policy no-referrer;
+    location = /.well-known/carddav { return 301 /remote.php/dav/; }
+    location = /.well-known/caldav  { return 301 /remote.php/dav/; }
+    location / { try_files $uri $uri/ /index.php?$query_string; }
+    location ~ ^/(?:build|tests|config|lib|3rdparty|templates|data)/ { deny all; }
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+    }
+}
+NCEOF
+ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
+nginx -s reload
+uninstall_script=rm -rf /var/www/nextcloud
+rm -f /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
+rm -f /etc/php/8.2/fpm/conf.d/99-nextcloud.ini
+nginx -s reload
+=== END ===
+
+=== APP ===
+name=n8n
+icon=fa-solid fa-diagram-project
+description=İş akışı otomasyon platformu
+default_port=5678
+config_files=
+process_name=n8n
+command_start=n8n start --port=5678 &
+command_stop=pkill -f 'n8n start'
+command_restart=pkill -f 'n8n start'; sleep 2; n8n start --port=5678 &
+install_script=npm install -g n8n
+uninstall_script=pkill -f 'n8n start' 2>/dev/null || true
+npm uninstall -g n8n
+=== END ===
+
+=== APP ===
+name=Ghost
+icon=fa-solid fa-ghost
+description=Modern blog ve yayıncılık platformu
+default_port=2368
+config_files=/var/www/ghost/config.production.json
+process_name=ghost
+command_start=cd /var/www/ghost && npx ghost run --port=2368 &
+command_stop=pkill -f 'ghost run'
+command_restart=pkill -f 'ghost run'; sleep 2; cd /var/www/ghost && npx ghost run --port=2368 &
+install_script=mkdir -p /var/www/ghost
+npm install -g ghost-cli
+cd /var/www/ghost
+ghost install local --no-setup-linux-user --no-start
+cd /root
+uninstall_script=pkill -f 'ghost run' 2>/dev/null || true
+rm -rf /var/www/ghost
+npm uninstall -g ghost-cli
+=== END ===
+
+=== APP ===
+name=MariaDB
+icon=fa-solid fa-database
+description=İlişkisel veritabanı sunucusu
+default_port=3306
+config_files=/etc/mysql/my.cnf,/etc/mysql/mariadb.conf.d/50-server.cnf
+process_name=mysqld
+command_start=mysqld_safe --datadir=/var/lib/mysql &
+command_stop=mysqladmin shutdown 2>/dev/null || pkill -f mysqld
+command_restart=mysqladmin shutdown 2>/dev/null; sleep 2; mysqld_safe --datadir=/var/lib/mysql &
+install_script=apt install -y mariadb-server mariadb-client
+mkdir -p /run/mysqld
+chown mysql:mysql /run/mysqld
+mysql_install_db --user=mysql --datadir=/var/lib/mysql
+uninstall_script=mysqladmin shutdown 2>/dev/null || pkill -f mysqld || true
+apt remove -y mariadb-server mariadb-client
+rm -rf /var/lib/mysql /run/mysqld
+=== END ===
+
+=== APP ===
+name=phpMyAdmin
+icon=fa-solid fa-table
+description=MySQL/MariaDB web yönetim arayüzü
+default_port=80
+config_files=/var/www/html/phpmyadmin/config.inc.php
+process_name=nginx
+command_start=nginx -s reload
+command_stop=nginx -s stop
+command_restart=nginx -s reload
+install_script=PMA_VER=$(curl -s https://api.github.com/repos/phpmyadmin/phpmyadmin/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+wget "https://files.phpmyadmin.net/phpMyAdmin/${PMA_VER}/phpMyAdmin-${PMA_VER}-all-languages.zip" -O /tmp/pma.zip
+mkdir -p /var/www/html/phpmyadmin
+unzip -o /tmp/pma.zip -d /tmp
+cp -r /tmp/phpMyAdmin-${PMA_VER}-all-languages/* /var/www/html/phpmyadmin/
+cp /var/www/html/phpmyadmin/config.sample.inc.php /var/www/html/phpmyadmin/config.inc.php
+rm -rf /tmp/pma.zip /tmp/phpMyAdmin-*
+uninstall_script=rm -rf /var/www/html/phpmyadmin
+=== END ===
+
+=== APP ===
+name=Jellyfin
+icon=fa-solid fa-film
+description=Medya sunucusu (film, müzik, dizi)
+default_port=8096
+config_files=/etc/jellyfin/network.xml,/etc/jellyfin/logging.default.json
+process_name=jellyfin
+command_start=jellyfin --datadir /etc/jellyfin --cachedir /var/cache/jellyfin &
+command_stop=pkill -f jellyfin
+command_restart=pkill -f jellyfin; sleep 2; jellyfin --datadir /etc/jellyfin --cachedir /var/cache/jellyfin &
+install_script=apt install -y jellyfin
+mkdir -p /etc/jellyfin /var/cache/jellyfin
+uninstall_script=pkill -f jellyfin 2>/dev/null || true
+apt remove -y jellyfin
+rm -rf /etc/jellyfin /var/cache/jellyfin
+=== END ===
+
+=== APP ===
+name=Vaultwarden
+icon=fa-solid fa-vault
+description=Hafif Bitwarden şifre yöneticisi sunucusu
+default_port=8085
+config_files=/opt/vaultwarden/.env,/opt/vaultwarden/config.json
+process_name=vaultwarden
+command_start=ROCKET_PORT=8085 /opt/vaultwarden/vaultwarden &
+command_stop=pkill -f vaultwarden
+command_restart=pkill -f vaultwarden; sleep 2; ROCKET_PORT=8085 /opt/vaultwarden/vaultwarden &
+install_script=mkdir -p /opt/vaultwarden
+VW_VER=$(curl -s https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then VW_ARCH="aarch64"; else VW_ARCH="x86_64"; fi
+wget "https://github.com/dani-garcia/vaultwarden/releases/download/${VW_VER}/vaultwarden-${VW_VER}-${VW_ARCH}-unknown-linux-musl.tar.gz" -O /tmp/vw.tar.gz
+tar xzf /tmp/vw.tar.gz -C /tmp
+mv /tmp/vaultwarden /opt/vaultwarden/vaultwarden
+chmod +x /opt/vaultwarden/vaultwarden
+rm -f /tmp/vw.tar.gz
+uninstall_script=pkill -f vaultwarden 2>/dev/null || true
+rm -rf /opt/vaultwarden
+=== END ===
+
+=== APP ===
+name=Uptime Kuma
+icon=fa-solid fa-heart-pulse
+description=Sunucu ve site izleme aracı
+default_port=3001
+config_files=
+process_name=node
+command_start=node /opt/uptime-kuma/server/server.js &
+command_stop=pkill -f 'uptime-kuma/server'
+command_restart=pkill -f 'uptime-kuma/server'; sleep 2; node /opt/uptime-kuma/server/server.js &
+install_script=mkdir -p /opt/uptime-kuma
+UK_VER=$(curl -s https://api.github.com/repos/louislam/uptime-kuma/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+wget "https://github.com/louislam/uptime-kuma/releases/download/${UK_VER}/uptime-kuma-${UK_VER}.tar.gz" -O /tmp/uk.tar.gz
+tar xzf /tmp/uk.tar.gz -C /opt/uptime-kuma
+cd /opt/uptime-kuma
+npm install --production
+cd /root
+rm -f /tmp/uk.tar.gz
+uninstall_script=pkill -f 'uptime-kuma/server' 2>/dev/null || true
+rm -rf /opt/uptime-kuma
+=== END ===
+
+=== APP ===
+name=Syncthing
+icon=fa-solid fa-arrows-rotate
+description=Cihazlar arası dosya senkronizasyonu
+default_port=8384
+config_files=/root/.config/syncthing/config.xml
+process_name=syncthing
+command_start=syncthing serve --no-browser --gui-address=0.0.0.0:8384 &
+command_stop=syncthing cli shutdown 2>/dev/null || pkill -f syncthing
+command_restart=syncthing cli shutdown 2>/dev/null; sleep 2; syncthing serve --no-browser --gui-address=0.0.0.0:8384 &
+install_script=apt install -y syncthing
+uninstall_script=syncthing cli shutdown 2>/dev/null || pkill -f syncthing || true
+apt remove -y syncthing
+rm -rf /root/.config/syncthing
+=== END ===
+
+=== APP ===
+name=Samba
+icon=fa-solid fa-share-nodes
+description=Dosya paylaşım sunucusu (SMB/CIFS)
+default_port=445
+config_files=/etc/samba/smb.conf
+process_name=smbd
+command_start=smbd -D; nmbd -D
+command_stop=pkill -f smbd; pkill -f nmbd
+command_restart=pkill -f smbd; pkill -f nmbd; sleep 1; smbd -D; nmbd -D
+install_script=apt install -y samba
+mkdir -p /root/shared
+chmod 755 /root/shared
+cat > /etc/samba/smb.conf << 'SMBEOF'
+[global]
+   workgroup = WORKGROUP
+   server string = ArmPanel Samba
+   map to guest = bad user
+   dns proxy = no
+
+[shared]
+   path = /root/shared
+   browseable = yes
+   writable = yes
+   guest ok = yes
+   read only = no
+   create mask = 0755
+   directory mask = 0755
+SMBEOF
+uninstall_script=pkill -f smbd 2>/dev/null || true; pkill -f nmbd 2>/dev/null || true
+apt remove -y samba
+rm -rf /root/shared
+=== END ===

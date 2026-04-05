@@ -5,6 +5,7 @@ from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.services import services_bp
 from routes.settings import settings_bp
+from routes.store import store_bp
 import os
 
 app = Flask(
@@ -21,6 +22,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(services_bp)
 app.register_blueprint(settings_bp)
+app.register_blueprint(store_bp)
 
 
 @app.before_request

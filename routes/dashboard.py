@@ -98,7 +98,7 @@ def _get_ram_usage_fallback():
 
 def _get_disk_usage_fallback(path="/"):
     try:
-        # os.statvfs is a standard system call and very reliable in PRoot
+        # os.statvfs is a standard system call and very reliable in Root
         st = os.statvfs(path)
         total = st.f_blocks * st.f_frsize
         free = st.f_bfree * st.f_frsize
