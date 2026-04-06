@@ -204,15 +204,12 @@ apt remove -y mariadb-server mariadb-client
 rm -rf /var/lib/mysql /run/mysqld
 === END ===
 
-Kurulum başarısız (kod -15): r case the central directory and zipfile comment will be found on the last disk(s) of this archive. unzip: cannot find zipfile directory in one of /tmp/pma.zip or /tmp/pma.zip.zip, and cannot find /tmp/pma.zip.ZIP, period. cp: cannot stat '/tmp/phpMyAdmin-RELEASE_5_2_3-all-languages/*': No such file or directory cp: cannot stat '/var/www/html/phpmyadmin/config.sample.inc.php': No such file or directory sed: can't read /var/www/html/phpmyadmin/config.inc.php: No such file or directory
-
-
 === APP ===
 name=phpMyAdmin
 icon=fa-solid fa-table
 description=MySQL/MariaDB web yonetim arayuzu
 default_port=80
-config_files=/var/www/html/phpmyadmin/config.inc.php
+config_files=/var/www/phpmyadmin/config.inc.php
 process_name=nginx
 command_start=nginx -s reload
 command_stop=nginx -s stop
