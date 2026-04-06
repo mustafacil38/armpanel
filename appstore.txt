@@ -219,7 +219,6 @@ if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
 wget "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip" -O /var/www/phpmyadmin.zip
-
 mkdir -p /var/www/phpmyadmin
 unzip -o /var/www/phpmyadmin.zip -d /var/www
 cp -r /var/www/phpMyAdmin-5.2.3-all-languages/* /var/www/phpmyadmin/
