@@ -65,25 +65,18 @@ process_name=php-fpm
 command_start=nginx -s reload; php-fpm8.2
 command_stop=pkill -f php-fpm
 command_restart=pkill -f php-fpm; sleep 1; php-fpm8.2; nginx -s reload
-install_script=apt install -y php8.2-fpm php8.2-cli php8.2-common php8.2-mysql php8.2-pgsql php8.2-sqlite3 php8.2-curl php8.2-xml php8.2-mbstring php8.2-zip php8.2-gd php8.2-intl php8.2-opcache php8.2-readline php8.2-bcmath php8.2-gmp php8.2-imagick
+install_script=apt install -y php8.2-cli php8.2-common php8.2-mysql php8.2-pgsql php8.2-sqlite3 php8.2-curl php8.2-xml php8.2-mbstring php8.2-zip php8.2-gd php8.2-intl php8.2-opcache php8.2-readline php8.2-bcmath php8.2-gmp php8.2-imagick
 if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
-apt install -y mariadb-server mariadb-client
-mkdir -p /run/mysqld
-chown mysql:mysql /run/mysqld
-mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
-mysqld_safe --datadir=/var/lib/mysql &
 sleep 3
 mysql -e "CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null || true
 mysql -e "GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'localhost' IDENTIFIED BY 'nextcloud123';" 2>/dev/null || true
 mysql -e "FLUSH PRIVILEGES;" 2>/dev/null || true
 mkdir -p /var/www/nextcloud /var/www/nextcloud/data
 if [ ! -f /var/www/nextcloud/index.php ]; then
-wget "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/nextcloud.zip
-unzip -o /tmp/nextcloud.zip -d /tmp
-cp -r /tmp/nextcloud/* /var/www/nextcloud/
-rm -rf /tmp/nextcloud /tmp/nextcloud.zip
+wget "https://download.nextcloud.com/server/releases/latest.zip" -O /var/www/nextcloud.zip
+unzip -o /var/www/nextcloud.zip -d /var/www/
 fi
 chown -R www-data:www-data /var/www/nextcloud
 chmod -R 755 /var/www/nextcloud
@@ -211,6 +204,9 @@ apt remove -y mariadb-server mariadb-client
 rm -rf /var/lib/mysql /run/mysqld
 === END ===
 
+Kurulum başarısız (kod -15): r case the central directory and zipfile comment will be found on the last disk(s) of this archive. unzip: cannot find zipfile directory in one of /tmp/pma.zip or /tmp/pma.zip.zip, and cannot find /tmp/pma.zip.ZIP, period. cp: cannot stat '/tmp/phpMyAdmin-RELEASE_5_2_3-all-languages/*': No such file or directory cp: cannot stat '/var/www/html/phpmyadmin/config.sample.inc.php': No such file or directory sed: can't read /var/www/html/phpmyadmin/config.inc.php: No such file or directory
+
+
 === APP ===
 name=phpMyAdmin
 icon=fa-solid fa-table
@@ -221,23 +217,21 @@ process_name=nginx
 command_start=nginx -s reload
 command_stop=nginx -s stop
 command_restart=nginx -s reload
-install_script=apt install -y php8.2-fpm php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-mysql
+install_script=apt install -y php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-mysql
 if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
-PMA_VER=$(curl -s https://api.github.com/repos/phpmyadmin/phpmyadmin/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
-wget "https://files.phpmyadmin.net/phpMyAdmin/${PMA_VER}/phpMyAdmin-${PMA_VER}-all-languages.zip" -O /tmp/pma.zip
-mkdir -p /var/www/html/phpmyadmin
-unzip -o /tmp/pma.zip -d /tmp
-cp -r /tmp/phpMyAdmin-${PMA_VER}-all-languages/* /var/www/html/phpmyadmin/
-cp /var/www/html/phpmyadmin/config.sample.inc.php /var/www/html/phpmyadmin/config.inc.php
-sed -i "s/\$cfg\['blowfish_secret'\] = ''/\$cfg['blowfish_secret'] = '$(openssl rand -base64 32 | tr -dc a-zA-Z0-9 | head -c 32)'/" /var/www/html/phpmyadmin/config.inc.php
-chown -R www-data:www-data /var/www/html/phpmyadmin
+wget "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip" -O /var/www/phpmyadmin.zip
+mkdir -p /var/www/phpmyadmin
+unzip -o /var/www/phpmyadmin.zip -d /var/www/
+cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
+sed -i "s/\$cfg\['blowfish_secret'\] = ''/\$cfg['blowfish_secret'] = '$(openssl rand -base64 32 | tr -dc a-zA-Z0-9 | head -c 32)'/" /var/www/phpmyadmin/config.inc.php
+chown -R www-data:www-data /var/www/phpmyadmin
 cat > /etc/nginx/sites-available/phpmyadmin << 'PMAEOF'
 server {
     listen 8082;
     server_name _;
-    root /var/www/html/phpmyadmin;
+    root /var/www/phpmyadmin;
     index index.php;
     location / { try_files $uri $uri/ /index.php?$query_string; }
     location ~ \.php$ {
@@ -251,7 +245,7 @@ ln -sf /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
 nginx -s reload 2>/dev/null || nginx
 pkill -f php-fpm; sleep 1; php-fpm8.2
 echo "phpMyAdmin kuruldu! Erisim: http://localhost:8082"
-uninstall_script=rm -rf /var/www/html/phpmyadmin
+uninstall_script=rm -rf /var/www/phpmyadmin
 rm -f /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
 nginx -s reload 2>/dev/null || true
 === END ===
