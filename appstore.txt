@@ -241,7 +241,7 @@ server {
 PMAEOF
 ln -sf /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
 nginx -s reload 2>/dev/null || nginx
-pkill -f php-fpm; sleep 1; php-fpm8.2
+killall php-fpm8.2 2>/dev/null || true; sleep 1; php-fpm8.2
 echo "phpMyAdmin kuruldu! Erisim: http://localhost:8082"
 uninstall_script=rm -rf /var/www/phpmyadmin
 rm -f /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
