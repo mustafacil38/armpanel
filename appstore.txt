@@ -208,7 +208,7 @@ rm -rf /var/lib/mysql /run/mysqld
 name=phpMyAdmin
 icon=fa-solid fa-table
 description=MySQL/MariaDB web yonetim arayuzu
-default_port=80
+default_port=8082
 config_files=/var/www/phpmyadmin/config.inc.php
 process_name=nginx
 command_start=nginx -s reload
@@ -219,9 +219,10 @@ if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
 wget "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip" -O /var/www/phpmyadmin.zip
-unzip -o /var/www/phpmyadmin.zip -d /var/www/
-sleep 5
-mv /var/www/phpMyAdmin-5.2.3-all-languages /var/www/phpmyadmin
+
+mkdir -p /var/www/html/phpmyadmin
+unzip -o /var/www/phpmyadmin.zip -d /var/www
+cp -r /var/www/phpMyAdmin-5.2.3-all-languages/* /var/www/phpmyadmin/
 cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
 sed -i "s/\$cfg\['blowfish_secret'\] = ''/\$cfg['blowfish_secret'] = '$(openssl rand -base64 32 | tr -dc a-zA-Z0-9 | head -c 32)'/" /var/www/phpmyadmin/config.inc.php
 chown -R www-data:www-data /var/www/phpmyadmin
