@@ -80,6 +80,7 @@ unzip -o /var/www/nextcloud.zip -d /var/www/
 fi
 chown -R www-data:www-data /var/www/nextcloud
 chmod -R 755 /var/www/nextcloud
+rm /var/www/nextcloud.zip
 cat > /etc/php/8.2/fpm/conf.d/99-nextcloud.ini << 'PHPEOF'
 upload_max_filesize = 512M
 post_max_size = 512M
@@ -118,7 +119,7 @@ server {
 NCEOF
 ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
 nginx -s reload 2>/dev/null || nginx
-pkill -f php-fpm; sleep 1; php-fpm8.2
+killall php-fpm8.2 2>/dev/null || true; sleep 1; php-fpm8.2
 echo "Nextcloud kuruldu! Kurulum sihirbasi: http://localhost:8081"
 echo "Veritabani: nextcloud / Kullanici: nextcloud / Sifre: nextcloud123"
 uninstall_script=pkill -f php-fpm 2>/dev/null || true
@@ -208,7 +209,7 @@ rm -rf /var/lib/mysql /run/mysqld
 === APP ===
 name=phpMyAdmin
 icon=fa-solid fa-table
-description=MySQL/MariaDB web yonetim arayuzu Giriş-admin-123456
+description=MySQL/MariaDB web yonetim arayuzu Kullanıcı Adı:admin Şifre:123456
 default_port=8082
 config_files=/var/www/phpmyadmin/config.inc.php
 process_name=nginx
@@ -226,6 +227,8 @@ cp -r /var/www/phpMyAdmin-5.2.3-all-languages/* /var/www/phpmyadmin/
 cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
 sed -i "s/\$cfg\['blowfish_secret'\] = ''/\$cfg['blowfish_secret'] = '$(openssl rand -base64 32 | tr -dc a-zA-Z0-9 | head -c 32)'/" /var/www/phpmyadmin/config.inc.php
 chown -R www-data:www-data /var/www/phpmyadmin
+rm /var/www/phpmyadmin.zip
+rm -rf /var/www/phpMyAdmin-5.2.3-all-languages/
 cat > /etc/nginx/sites-available/phpmyadmin << 'PMAEOF'
 server {
     listen 8082;
