@@ -197,6 +197,7 @@ mkdir -p /run/mysqld
 chown mysql:mysql /run/mysqld
 mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
 mysqld_safe --datadir=/var/lib/mysql &
+mysql -e "CREATE USER 'admin'@'localhost' IDENTIFIED BY '123456'; GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost' WITH GRANT OPTION; FLUSH PRIVILEGES;"
 sleep 3
 mysql -e "SELECT 1;" 2>/dev/null && echo "MariaDB basariyla baslatildi" || echo "MariaDB baslatilirken hata olustu"
 uninstall_script=mysqladmin shutdown 2>/dev/null || pkill -f mysqld || true
@@ -207,7 +208,7 @@ rm -rf /var/lib/mysql /run/mysqld
 === APP ===
 name=phpMyAdmin
 icon=fa-solid fa-table
-description=MySQL/MariaDB web yonetim arayuzu
+description=MySQL/MariaDB web yonetim arayuzu Giriş-admin-123456
 default_port=8082
 config_files=/var/www/phpmyadmin/config.inc.php
 process_name=nginx
