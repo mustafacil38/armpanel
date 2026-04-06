@@ -8,6 +8,12 @@ store_bp = Blueprint("store", __name__)
 APPSTORE_URL = "https://raw.githubusercontent.com/mustafacil38/armpanel/main/appstore.txt"
 
 
+KNOWN_KEYS = {
+    "name", "icon", "description", "default_port", "config_files",
+    "process_name", "command_start", "command_stop", "command_restart",
+    "install_script", "uninstall_script"
+}
+
 def _parse_appstore(text):
     apps = []
     blocks = text.split("=== APP ===")
@@ -21,25 +27,28 @@ def _parse_appstore(text):
         app = {}
         last_key = None
         for line in block.strip().splitlines():
-            raw = line.rstrip('\n')
-            s = raw.strip()
+            s = line.strip().replace('\r', '')
             if not s:
                 continue
+            
+            is_known_key = False
             if "=" in s:
-                key, _, value = s.partition("=")
-                key = key.strip()
-                value = value.strip()
-                if key == "default_port":
-                    try:
-                        value = int(value)
-                    except ValueError:
-                        value = 0
-                app[key] = value
-                last_key = key
-            else:
-                # Continuation lines for multi-line fields like install_script/uninstall_script
-                if last_key in ("install_script", "uninstall_script"):
-                    app[last_key] = app.get(last_key, "") + "\n" + s
+                key_candidate, _, val_candidate = s.partition("=")
+                key_candidate = key_candidate.strip()
+                if key_candidate in KNOWN_KEYS:
+                    value = val_candidate.strip()
+                    if key_candidate == "default_port":
+                        try:
+                            value = int(value)
+                        except ValueError:
+                            value = 0
+                    app[key_candidate] = value
+                    last_key = key_candidate
+                    is_known_key = True
+            
+            if not is_known_key and last_key in ("install_script", "uninstall_script"):
+                app[last_key] = app.get(last_key, "") + "\n" + s
+                
         if app.get("name"):
             apps.append(app)
     return apps
