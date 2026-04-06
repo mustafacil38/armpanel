@@ -126,20 +126,23 @@ def store_install():
             ["bash", "-c", script],
             capture_output=True, text=True, timeout=600
         )
-        # Debug logging for store install script execution
         if result.stdout:
             print("[STORE_INSTALL][STDOUT]", result.stdout)
         if result.stderr:
             print("[STORE_INSTALL][STDERR]", result.stderr)
+        
         if result.returncode != 0:
             return jsonify({
                 "ok": False,
-                "error": f"Kurulum başarısız: {result.stderr[-500:]}"
+                "error": f"Kurulum başarısız (kod {result.returncode}): {result.stderr[-500:]}"
             }), 500
 
         install_store_app(target)
 
-        return jsonify({"ok": True, "message": f"{app_name} kuruldu"})
+        success_msg = f"{app_name} kuruldu"
+        if result.stderr:
+            success_msg += f"\n\nNot: {result.stderr[:200]}"
+        return jsonify({"ok": True, "message": success_msg})
     except subprocess.TimeoutExpired:
         return jsonify({"ok": False, "error": "Kurulum zaman aşımı"}), 500
     except Exception as e:
