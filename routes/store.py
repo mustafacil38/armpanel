@@ -19,19 +19,27 @@ def _parse_appstore(text):
         if end_idx != -1:
             block = block[:end_idx]
         app = {}
+        last_key = None
         for line in block.strip().splitlines():
-            line = line.strip()
-            if not line or "=" not in line:
+            raw = line.rstrip('\n')
+            s = raw.strip()
+            if not s:
                 continue
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip()
-            if key == "default_port":
-                try:
-                    value = int(value)
-                except ValueError:
-                    value = 0
-            app[key] = value
+            if "=" in s:
+                key, _, value = s.partition("=")
+                key = key.strip()
+                value = value.strip()
+                if key == "default_port":
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        value = 0
+                app[key] = value
+                last_key = key
+            else:
+                # Continuation lines for multi-line fields like install_script/uninstall_script
+                if last_key in ("install_script", "uninstall_script"):
+                    app[last_key] = app.get(last_key, "") + "\n" + s
         if app.get("name"):
             apps.append(app)
     return apps
