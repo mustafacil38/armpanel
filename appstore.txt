@@ -220,6 +220,7 @@ sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www
 fi
 wget "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip" -O /var/www/phpmyadmin.zip
 unzip -o /var/www/phpmyadmin.zip -d /var/www/
+sleep 5
 mv /var/www/phpMyAdmin-5.2.3-all-languages /var/www/phpmyadmin
 cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
 sed -i "s/\$cfg\['blowfish_secret'\] = ''/\$cfg['blowfish_secret'] = '$(openssl rand -base64 32 | tr -dc a-zA-Z0-9 | head -c 32)'/" /var/www/phpmyadmin/config.inc.php
