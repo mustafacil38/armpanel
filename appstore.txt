@@ -91,19 +91,15 @@ command_start=nginx; php-fpm8.2
 command_stop=pkill nginx 2>/dev/null || true; pkill php-fpm8.2 2>/dev/null || true
 command_restart=pkill nginx 2>/dev/null || true; pkill php-fpm8.2 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
 install_script=apt update && apt install -y php8.2-cli php8.2-common php8.2-mysql php8.2-pgsql php8.2-sqlite3 php8.2-curl php8.2-xml php8.2-mbstring php8.2-zip php8.2-gd php8.2-intl php8.2-opcache php8.2-readline php8.2-bcmath php8.2-imagick unzip mariadb-server mariadb-client
-if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
-sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
-fi
 mkdir -p /run/mysqld
 chown mysql:mysql /run/mysqld 2>/dev/null || true
 if [ ! -d /var/lib/mysql/mysql ]; then
 mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
 fi
 mysqld_safe --datadir=/var/lib/mysql &
-sleep 3
+sleep 5
 mysql -e "CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null || true
-mysql -e "CREATE USER IF NOT EXISTS 'nextcloud'@'localhost' IDENTIFIED BY 'nextcloud123';" 2>/dev/null || true
-mysql -e "GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'localhost'; FLUSH PRIVILEGES;" 2>/dev/null || true
+mysql -e "CREATE USER IF NOT EXISTS 'nextcloud'@'localhost' IDENTIFIED BY 'nextcloud123'; GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'localhost'; FLUSH PRIVILEGES;" 2>/dev/null || true
 mkdir -p /var/www/nextcloud /var/www/nextcloud/data
 wget -q "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/nextcloud.zip
 unzip -q /tmp/nextcloud.zip -d /tmp
@@ -126,7 +122,7 @@ server {
     listen 8081;
     server_name _;
     root /var/www/nextcloud;
-    index index.php;
+    index index.php index.html;
     add_header X-Content-Type-Options nosniff;
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-XSS-Protection "1; mode=block";
@@ -140,6 +136,7 @@ server {
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
     }
+    location ~ /\.ht { deny all; }
 }
 NCEOF
 ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
@@ -244,6 +241,14 @@ command_start=nginx; php-fpm8.2
 command_stop=pkill nginx 2>/dev/null || true
 command_restart=pkill nginx 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
 install_script=apt update && apt install -y php8.2-fpm php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-mysql unzip
+mkdir -p /run/mysqld
+chown mysql:mysql /run/mysqld 2>/dev/null || true
+if [ ! -d /var/lib/mysql/mysql ]; then
+mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
+fi
+mysqld_safe --datadir=/var/lib/mysql &
+sleep 3
+mysql -e "CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED BY '123456'; FLUSH PRIVILEGES;" 2>/dev/null || true
 if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
@@ -259,31 +264,34 @@ if [ ! -f /var/www/phpmyadmin/config.inc.php ]; then
 cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
 fi
 BLOWFISH=$(openssl rand -hex 24 2>/dev/null || echo "armpanelsecretkey12345678")
-cat > /var/www/phpmyadmin/config.inc.php << 'PMAEOF'
+cat > /var/www/phpmyadmin/config.inc.php << EOF
 <?php
-$cfg['blowfish_secret'] = '${BLOWFISH}';
-$cfg['Servers'][1]['auth_type'] = 'cookie';
-$cfg['Servers'][1]['host'] = 'localhost';
-$cfg['Servers'][1]['compress'] = false;
-$cfg['Servers'][1]['AllowNoPassword'] = false;
-$cfg['Servers'][1]['user'] = 'root';
-$cfg['Servers'][1]['password'] = '123456';
-$cfg['UploadDir'] = '';
-$cfg['SaveDir'] = '';
-PMAEOF
+\$cfg['blowfish_secret'] = '${BLOWFISH}';
+\$cfg['Servers'][1]['auth_type'] = 'cookie';
+\$cfg['Servers'][1]['host'] = 'localhost';
+\$cfg['Servers'][1]['compress'] = false;
+\$cfg['Servers'][1]['AllowNoPassword'] = false;
+\$cfg['Servers'][1]['user'] = 'root';
+\$cfg['Servers'][1]['password'] = '123456';
+\$cfg['UploadDir'] = '';
+\$cfg['SaveDir'] = '';
+EOF
 chown -R www-data:www-data /var/www/phpmyadmin
+chmod -R 755 /var/www/phpmyadmin
 cat > /etc/nginx/sites-available/phpmyadmin << 'PMAEOF'
 server {
     listen 8082;
     server_name _;
     root /var/www/phpmyadmin;
-    index index.php;
+    index index.php index.html;
     location / { try_files $uri $uri/ /index.php?$query_string; }
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
     }
+    location ~ /\.ht { deny all; }
 }
 PMAEOF
 ln -sf /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
