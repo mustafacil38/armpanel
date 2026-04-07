@@ -6,8 +6,8 @@ default_port=51820
 config_files=/etc/wireguard/wg0.conf
 process_name=wg-quick
 command_start=wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
-command_stop=wg-quick down wg0 2>/dev/null || pkill -f 'wireguard-go wg0' 2>/dev/null || true
-command_restart=wg-quick down wg0 2>/dev/null || true; pkill -f 'wireguard-go wg0' 2>/dev/null || true; sleep 2; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
+command_stop=wg-quick down wg0 2>/dev/null || killall wireguard-go 2>/dev/null || true
+command_restart=wg-quick down wg0 2>/dev/null || true; killall wireguard-go 2>/dev/null || true; sleep 2; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
 install_script=apt update && apt install -y wireguard-tools iptables
 mkdir -p /etc/wireguard
 if lsmod | grep -q wireguard; then
@@ -57,8 +57,8 @@ default_port=3000
 config_files=/opt/adguardhome/AdGuardHome.yaml
 process_name=AdGuardHome
 command_start=/opt/adguardhome/AdGuardHome -c /opt/adguardhome/AdGuardHome.yaml -w /opt/adguardhome &
-command_stop=pkill -f AdGuardHome
-command_restart=pkill -f AdGuardHome; sleep 2; /opt/adguardhome/AdGuardHome -c /opt/adguardhome/AdGuardHome.yaml -w /opt/adguardhome &
+command_stop=for pid in $(pgrep -f "AdGuardHome" 2>/dev/null); do kill $pid 2>/dev/null || true; done
+command_restart=for pid in $(pgrep -f "AdGuardHome" 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; /opt/adguardhome/AdGuardHome -c /opt/adguardhome/AdGuardHome.yaml -w /opt/adguardhome &
 install_script=ARCH=$(uname -m)
 if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
 AGH_ARCH="arm64"
@@ -76,7 +76,7 @@ rm -rf /tmp/AdGuardHome /tmp/adguardhome.tar.gz
 
 EOF
 echo "AdGuard Home kuruldu. Kurulum: http://localhost:3000"
-uninstall_script=/opt/adguardhome/AdGuardHome -s uninstall 2>/dev/null || pkill -f AdGuardHome 2>/dev/null || true
+uninstall_script=for pid in $(pgrep AdGuardHome 2>/dev/null); do kill $pid 2>/dev/null || true; done
 rm -rf /opt/adguardhome
 === END ===
 
@@ -88,8 +88,8 @@ default_port=8081
 config_files=/var/www/nextcloud/config/config.php,/etc/nginx/sites-available/nextcloud
 process_name=php-fpm8.2
 command_start=nginx; php-fpm8.2
-command_stop=pkill php-fpm8.2 2>/dev/null || true
-command_restart=pkill php-fpm8.2 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
+command_stop=pkill nginx 2>/dev/null || true; pkill php-fpm8.2 2>/dev/null || true
+command_restart=pkill nginx 2>/dev/null || true; pkill php-fpm8.2 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
 install_script=apt update && apt install -y php8.2-fpm php8.2-cli php8.2-common php8.2-mysql php8.2-pgsql php8.2-sqlite3 php8.2-curl php8.2-xml php8.2-mbstring php8.2-zip php8.2-gd php8.2-intl php8.2-opcache php8.2-readline php8.2-bcmath php8.2-imagick unzip mariadb-server mariadb-client
 if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
@@ -167,13 +167,13 @@ default_port=5678
 config_files=
 process_name=n8n
 command_start=n8n start --port=5678 &
-command_stop=pkill -f n8n
-command_restart=pkill -f n8n; sleep 2; n8n start --port=5678 &
+command_stop=for pid in $(pgrep n8n 2>/dev/null); do kill $pid 2>/dev/null || true; done
+command_restart=for pid in $(pgrep n8n 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; n8n start --port=5678 &
 install_script=apt update && apt install -y nodejs npm
 npm install -g n8n
 mkdir -p /root/.n8n
 echo "n8n kuruldu! Erisim: http://localhost:5678"
-uninstall_script=pkill -f n8n 2>/dev/null || true
+uninstall_script=for pid in $(pgrep n8n 2>/dev/null); do kill $pid 2>/dev/null || true; done
 npm uninstall -g n8n 2>/dev/null || true
 === END ===
 
@@ -184,9 +184,9 @@ description=Modern blog ve yayincilik platformu
 default_port=2368
 config_files=/var/www/ghost/config.production.json
 process_name=node
-command_start=cd /var/www/ghost && npx ghost run --port=2368 &
-command_stop=pkill -f ghost 2>/dev/null || true
-command_restart=pkill -f ghost 2>/dev/null || true; sleep 2; cd /var/www/ghost && npx ghost run --port=2368 &
+command_start=mysqld_safe --datadir=/var/lib/mysql & sleep 2; cd /var/www/ghost && NODE_ENV=production node current/content/ghost.js &
+command_stop=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done
+command_restart=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; cd /var/www/ghost && NODE_ENV=production node current/content/ghost.js &
 install_script=apt update && apt install -y nodejs npm mariadb-server mariadb-client
 mkdir -p /run/mysqld
 chown mysql:mysql /run/mysqld 2>/dev/null || true
@@ -201,10 +201,10 @@ mysql -e "GRANT ALL PRIVILEGES ON ghost.* TO 'ghost'@'localhost'; FLUSH PRIVILEG
 mkdir -p /var/www/ghost
 npm install -g ghost-cli
 cd /var/www/ghost
-ghost install local --no-setup-linux-user --no-start --db mysql --dbhost localhost --dbname ghost --dbuser ghost --dbpass ghost123 --port 2368 --no-prompt 2>/dev/null || true
+NODE_ENV=production ghost install local --no-setup-linux-user --no-start --db mysql --dbhost localhost --dbname ghost --dbuser ghost --dbpass ghost123 --port 2368 --no-prompt 2>/dev/null || true
 cd /root
 echo "Ghost kuruldu! Erisim: http://localhost:2368"
-uninstall_script=pkill -f ghost 2>/dev/null || true
+uninstall_script=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done
 rm -rf /var/www/ghost
 npm uninstall -g ghost-cli 2>/dev/null || true
 mysql -e "DROP DATABASE IF EXISTS ghost;" 2>/dev/null || true
@@ -327,7 +327,7 @@ config_files=/opt/vaultwarden/.env
 process_name=vaultwarden
 command_start=ROCKET_PORT=8085 /opt/vaultwarden/vaultwarden &
 command_stop=pkill vaultwarden 2>/dev/null || true
-command_restart=pkill vaultwarden 2>/dev/null || true; sleep 2; ROCKETET_PORT=8085 /opt/vaultwarden/vaultwarden &
+command_restart=pkill vaultwarden 2>/dev/null || true; sleep 2; ROCKET_PORT=8085 /opt/vaultwarden/vaultwarden &
 install_script=apt update && apt install -y unzip
 mkdir -p /opt/vaultwarden
 if [ ! -f /opt/vaultwarden/vaultwarden ]; then
@@ -360,8 +360,8 @@ default_port=3001
 config_files=
 process_name=node
 command_start=cd /opt/uptime-kuma && node server/server.js &
-command_stop=pkill -f 'uptime-kuma' 2>/dev/null || true
-command_restart=pkill -f 'uptime-kuma' 2>/dev/null || true; sleep 2; cd /opt/uptime-kuma && node server/server.js &
+command_stop=for pid in $(pgrep -f uptime-kuma 2>/dev/null); do kill $pid 2>/dev/null || true; done
+command_restart=for pid in $(pgrep -f uptime-kuma 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; cd /opt/uptime-kuma && node server/server.js &
 install_script=apt update && apt install -y nodejs npm
 mkdir -p /opt/uptime-kuma
 if [ ! -f /opt/uptime-kuma/package.json ]; then
@@ -375,7 +375,7 @@ cd /root
 fi
 cd /opt/uptime-kuma && node server/server.js &
 echo "Uptime Kuma kuruldu! Erisim: http://localhost:3001"
-uninstall_script=pkill -f 'uptime-kuma' 2>/dev/null || true
+uninstall_script=for pid in $(pgrep -f uptime-kuma 2>/dev/null); do kill $pid 2>/dev/null || true; done
 rm -rf /opt/uptime-kuma
 === END ===
 
