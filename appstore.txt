@@ -233,33 +233,34 @@ name=phpMyAdmin
 icon=fa-solid fa-table
 description=MySQL/MariaDB web yonetim arayuzu - Kullanici: admin Sifre: 123456
 default_port=8082
-config_files=/var/www/html/phpmyadmin/config.inc.php
+config_files=/var/phpmyadmin/config.inc.php
 process_name=nginx
 command_start=nginx; php-fpm8.2
 command_stop=pkill nginx 2>/dev/null || true
 command_restart=pkill nginx 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
-install_script=apt update && apt install -y php8.2-fpm php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-mysql unzip
+install_script=apt update && apt install -y php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-mysql unzip
 if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
-mkdir -p /var/www/html/phpmyadmin
-if [ ! -f /var/www/html/phpmyadmin/index.php ]; then
-wget "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip" -O /tmp/pma.zip
-unzip -q /tmp/pma.zip -d /tmp
-cp -r /tmp/phpMyAdmin-5.2.3-all-languages/* /var/www/html/phpmyadmin/
-rm -rf /tmp/pma.zip /tmp/phpMyAdmin-5.2.3-all-languages
+if [ ! -f /var/www/phpmyadmin/index.php ]; then
+wget "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip" -O /var/www/phpmyadmin.zip
+mkdir -p /var/www/phpmyadmin
+unzip -o /var/www/phpmyadmin.zip -d /var/www
+cp -r /var/www/phpMyAdmin-5.2.3-all-languages/* /var/www/phpmyadmin/
+rm /var/www/phpmyadmin.zip
+rm -rf /var/www/phpMyAdmin-5.2.3-all-languages/
 fi
-if [ ! -f /var/www/html/phpmyadmin/config.inc.php ]; then
-cp /var/www/html/phpmyadmin/config.sample.inc.php /var/www/html/phpmyadmin/config.inc.php
+if [ ! -f /var/www/phpmyadmin/config.inc.php ]; then
+cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
 fi
 BLOWFISH=$(openssl rand -hex 16 2>/dev/null)
-sed -i "s/blowfish_secret'] = ''/blowfish_secret'] = '${BLOWFISH}/" /var/www/html/phpmyadmin/config.inc.php 2>/dev/null || true
-chown -R www-data:www-data /var/www/html/phpmyadmin
+sed -i "s/blowfish_secret'] = ''/blowfish_secret'] = '${BLOWFISH}/" /var/www/phpmyadmin/config.inc.php 2>/dev/null || true
+chown -R www-data:www-data /var/www/phpmyadmin
 cat > /etc/nginx/sites-available/phpmyadmin << 'PMAEOF'
 server {
     listen 8082;
     server_name _;
-    root /var/www/html/phpmyadmin;
+    root /var/www/phpmyadmin;
     index index.php;
     location / { try_files $uri $uri/ /index.php?$query_string; }
     location ~ \.php$ {
@@ -276,7 +277,7 @@ echo "phpMyAdmin kuruldu! Erisim: http://localhost:8082"
 echo "Kullanici: admin / Sifre: 123456"
 uninstall_script=pkill nginx 2>/dev/null || true
 pkill php-fpm8.2 2>/dev/null || true
-rm -rf /var/www/html/phpmyadmin
+rm -rf /var/www/phpmyadmin
 rm -f /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
 === END ===
 
