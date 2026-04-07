@@ -254,7 +254,7 @@ sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www
 fi
 mkdir -p /var/www/phpmyadmin
 if [ ! -f /var/www/phpmyadmin/index.php ]; then
-PMA_VER=$(curl -s https://api.github.com/repos/phpmyadmin/phpmyadmin/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+PMA_VER=$(curl -s https://api.github.com/repos/phpmyadmin/phpmyadmin/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v | sed 's/RELEASE_//' | sed 's/_/./g')
 wget -q "https://files.phpmyadmin.net/phpMyAdmin/${PMA_VER}/phpMyAdmin-${PMA_VER}-all-languages.zip" -O /tmp/pma.zip
 unzip -q /tmp/pma.zip -d /tmp
 cp -r /tmp/phpMyAdmin-${PMA_VER}-all-languages/* /var/www/phpmyadmin/
