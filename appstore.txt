@@ -70,8 +70,9 @@ if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
 sleep 3
-mysql -e "CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null || true
 mysql -e "CREATE USER 'nextcloud'@'localhost' IDENTIFIED BY 'nextcloud123'; GRANT ALL PRIVILEGES ON *.* TO 'nextcloud'@'localhost' WITH GRANT OPTION; FLUSH PRIVILEGES;" 2>/dev/null || true
+mysql -e "CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null || true
+mysqladmin shutdown 2>/dev/null; sleep 2; mysqld_safe --datadir=/var/lib/mysql &
 mkdir -p /var/www/nextcloud /var/www/nextcloud/data
 if [ ! -f /var/www/nextcloud/index.php ]; then
 wget "https://download.nextcloud.com/server/releases/latest.zip" -O /var/www/nextcloud.zip
