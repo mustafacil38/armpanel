@@ -1,13 +1,13 @@
 === APP ===
 name=WireGuard + Web Panel
 icon=fa-solid fa-shield-halved
-description=Web arayuzlu VPN sunucusu (Panel Port: 5000 / Root Gerekir)
+description=Hafif ve guvenli VPN tuneli (Root Gerekir) Panel: admin / admin
 default_port=5000
 config_files=/etc/wireguard/wg0.conf,/opt/wireguard-ui/db/wireguard-ui.db
 process_name=wireguard-ui,wireguard-go
-command_start=export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; wg-quick up wg0 2>/dev/null; cd /opt/wireguard-ui && ./wireguard-ui &
+command_start=export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; export WUI_BIND="0.0.0.0:5000"; export SESSION_SECRET="armpanel_secret_session_key"; wg-quick up wg0 2>/dev/null; cd /opt/wireguard-ui && ./wireguard-ui &
 command_stop=wg-quick down wg0 2>/dev/null; pkill -f wireguard-ui 2>/dev/null || true
-command_restart=pkill -f wireguard-ui 2>/dev/null; wg-quick down wg0 2>/dev/null; sleep 1; export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; wg-quick up wg0 2>/dev/null; cd /opt/wireguard-ui && ./wireguard-ui &
+command_restart=pkill -f wireguard-ui 2>/dev/null; wg-quick down wg0 2>/dev/null; sleep 1; export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; export WUI_BIND="0.0.0.0:5000"; export SESSION_SECRET="armpanel_secret_session_key"; wg-quick up wg0 2>/dev/null; cd /opt/wireguard-ui && ./wireguard-ui &
 install_script=apt update && apt install -y wireguard-tools wireguard-go iptables curl unzip
 mkdir -p /etc/wireguard /opt/wireguard-ui
 # Tun cihazi kontrolü ve olusturma (Root gerektirir)
@@ -16,15 +16,15 @@ if [ ! -c /dev/net/tun ]; then
     mknod /dev/net/tun c 10 200 2>/dev/null || true
     chmod 600 /dev/net/tun 2>/dev/null || true
 fi
-# WireGuard-UI kurulumu
+# WireGuard-UI kurulumu (Dash uyumlu script)
 if [ ! -f /opt/wireguard-ui/wireguard-ui ]; then
     ARCH=$(uname -m)
-    if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" || "$ARCH" == "armv8"* ]]; then
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
         WUI_ARCH="arm64"
     else
         WUI_ARCH="amd64"
     fi
-    WUI_VER=$(curl -s https://api.github.com/repos/ngoduykhanh/wireguard-ui/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+    WUI_VER="0.6.2"
     wget -q "https://github.com/ngoduykhanh/wireguard-ui/releases/download/v${WUI_VER}/wireguard-ui-v${WUI_VER}-linux-${WUI_ARCH}.tar.gz" -O /tmp/wui.tar.gz
     tar xzf /tmp/wui.tar.gz -C /opt/wireguard-ui
     chmod +x /opt/wireguard-ui/wireguard-ui
@@ -45,7 +45,7 @@ PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING 
 WGEOF
 fi
 sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
-echo "WireGuard + Web Panel kuruldu. Panel: http://localhost:5000"
+echo "WireGuard + Web Panel kuruldu. Panel: http://0.0.0.0:5000 (admin / admin)"
 uninstall_script=wg-quick down wg0 2>/dev/null; pkill -f wireguard-ui; rm -rf /opt/wireguard-ui /etc/wireguard
 === END ===
 
@@ -60,8 +60,7 @@ command_start=/opt/AdGuardHome/AdGuardHome -s run &
 command_stop=pkill -f AdGuardHome 2>/dev/null || true
 command_restart=pkill -f AdGuardHome 2>/dev/null || true; sleep 1; /opt/AdGuardHome/AdGuardHome -s run &
 install_script=ARCH=$(uname -m)
-# Telefonlar icin varsayilan arm64
-if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" || "$ARCH" == "armv8"* ]]; then
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
     AGH_ARCH="arm64"
 else
     AGH_ARCH="amd64"
@@ -81,7 +80,7 @@ rm -rf /opt/AdGuardHome
 === APP ===
 name=MariaDB
 icon=fa-solid fa-database
-description=Iliskisel veritabani sunucusu (Port 3306)
+description=Iliskisel veritabani sunucusu Giris: admin / 123456
 default_port=3306
 config_files=/etc/mysql/my.cnf
 process_name=mysqld
@@ -118,7 +117,7 @@ install_script=apt update && apt install -y curl unzip
 mkdir -p /opt/vaultwarden/data
 VW_VER=$(curl -s https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest | grep tag_name | cut -d'"' -f4)
 ARCH=$(uname -m)
-if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" || "$ARCH" == "armv8"* ]]; then
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
     VW_ARCH="aarch64"
 else
     VW_ARCH="x86_64"
