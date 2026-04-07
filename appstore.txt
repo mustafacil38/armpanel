@@ -117,11 +117,11 @@ chown -R www-data:www-data /var/www/nextcloud/data
 sudo -u www-data php /var/www/nextcloud/occ maintenance:repair 2>/dev/null || su -s /bin/bash www-data -c "php /var/www/nextcloud/occ maintenance:repair" 2>/dev/null || true
 sudo -u www-data php /var/www/nextcloud/occ files:scan --all 2>/dev/null || su -s /bin/bash www-data -c "php /var/www/nextcloud/occ files:scan --all" 2>/dev/null || true
 cat > /etc/php/8.2/fpm/conf.d/99-nextcloud.ini << 'PHPEOF'
-upload_max_filesize = 512M
-post_max_size = 512M
-memory_limit = 512M
-max_execution_time = 3600
-output_buffering = off
+upload_max_filesize = 2M
+post_max_size = 8M
+memory_limit = 128M
+max_execution_time = 30
+output_buffering = 4096
 PHPEOF
 cat > /etc/nginx/sites-available/nextcloud << 'NCEOF'
 server {
@@ -129,7 +129,7 @@ server {
     server_name _;
     root /var/www/nextcloud;
     index index.php;
-    client_max_body_size 512M;
+    client_max_body_size 2M;
     add_header X-Content-Type-Options nosniff;
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-XSS-Protection "1; mode=block";
