@@ -5,20 +5,34 @@ description=Hafif ve guvenli VPN tuneli (Root Gerekir)
 default_port=51820
 config_files=/etc/wireguard/wg0.conf
 process_name=wireguard-go
-command_start=wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
+command_start=export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; export WG_THREADS=1; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
 command_stop=wg-quick down wg0 2>/dev/null || killall wireguard-go 2>/dev/null || true
-command_restart=wg-quick down wg0 2>/dev/null || true; killall wireguard-go 2>/dev/null || true; sleep 2; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
-install_script=apt update && apt install -y wireguard-tools iptables
+command_restart=wg-quick down wg0 2>/dev/null || true; killall wireguard-go 2>/dev/null || true; sleep 2; export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
+install_script=apt update && apt install -y wireguard-tools iptables curl
 mkdir -p /etc/wireguard
+# Tun cihazi kontrolü ve olusturma (Root gerektirir)
+if [ ! -c /dev/net/tun ]; then
+    mkdir -p /dev/net
+    mknod /dev/net/tun c 10 200 2>/dev/null || true
+    chmod 600 /dev/net/tun 2>/dev/null || true
+fi
+# wireguard-go kurulumu (Telefonlar icin userspace zorunlu)
 if [ ! -f /usr/local/bin/wireguard-go ]; then
     echo "wireguard-go kuruluyor..."
     ARCH=$(uname -m)
-    if [ "$ARCH" = "aarch64" ]; then WG_ARCH="arm64"; else WG_ARCH="amd64"; fi
+    if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" || "$ARCH" == "armv8"* ]]; then
+        WG_ARCH="arm64"
+    else
+        WG_ARCH="amd64"
+    fi
     WG_GO_VER=$(curl -s https://api.github.com/repos/WireGuard/wireguard-go-releases/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
     wget -q "https://github.com/WireGuard/wireguard-go-releases/releases/download/v${WG_GO_VER}/wireguard-go-${WG_GO_VER}-linux-${WG_ARCH}.tar.xz" -O /tmp/wggo.tar.xz
-    tar xf /tmp/wggo.tar.xz -C /tmp
-    cp /tmp/wireguard-go/wireguard-go /usr/local/bin/wireguard-go
+    mkdir -p /tmp/wggo_ext
+    tar xf /tmp/wggo.tar.xz -C /tmp/wggo_ext
+    # Klasör isminden bagimsiz binary bulma ve kopyalama
+    find /tmp/wggo_ext -type f -name "wireguard-go" -exec cp {} /usr/local/bin/wireguard-go \;
     chmod +x /usr/local/bin/wireguard-go
+    rm -rf /tmp/wggo.tar.xz /tmp/wggo_ext
 fi
 if [ ! -f /etc/wireguard/server_private.key ]; then
     wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
@@ -35,10 +49,10 @@ PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING 
 WGEOF
 chmod 600 /etc/wireguard/wg0.conf
 sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
-echo "WireGuard kuruldu. Port: 51820/UDP"
+echo "WireGuard kuruldu. Userspace modunda baslatilacak."
 uninstall_script=wg-quick down wg0 2>/dev/null || true
 apt remove -y wireguard-tools 2>/dev/null || true
-rm -rf /etc/wireguard
+rm -rf /etc/wireguard /usr/local/bin/wireguard-go
 === END ===
 
 === APP ===
@@ -52,7 +66,12 @@ command_start=/opt/AdGuardHome/AdGuardHome -s run &
 command_stop=pkill -f AdGuardHome 2>/dev/null || true
 command_restart=pkill -f AdGuardHome 2>/dev/null || true; sleep 1; /opt/AdGuardHome/AdGuardHome -s run &
 install_script=ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ]; then AGH_ARCH="arm64"; else AGH_ARCH="amd64"; fi
+# Telefonlar icin varsayilan arm64
+if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" || "$ARCH" == "armv8"* ]]; then
+    AGH_ARCH="arm64"
+else
+    AGH_ARCH="amd64"
+fi
 mkdir -p /opt
 AGH_VER=$(curl -s https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest | grep tag_name | cut -d'"' -f4)
 wget -q "https://github.com/AdguardTeam/AdGuardHome/releases/download/${AGH_VER}/AdGuardHome_linux_${AGH_ARCH}.tar.gz" -O /tmp/agh.tar.gz
@@ -105,7 +124,11 @@ install_script=apt update && apt install -y curl unzip
 mkdir -p /opt/vaultwarden/data
 VW_VER=$(curl -s https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest | grep tag_name | cut -d'"' -f4)
 ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ]; then VW_ARCH="aarch64"; else VW_ARCH="x86_64"; fi
+if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" || "$ARCH" == "armv8"* ]]; then
+    VW_ARCH="aarch64"
+else
+    VW_ARCH="x86_64"
+fi
 wget -q "https://github.com/dani-garcia/vaultwarden/releases/download/${VW_VER}/vaultwarden-${VW_VER}-${VW_ARCH}-unknown-linux-musl.tar.gz" -O /tmp/vw.tar.gz
 tar xzf /tmp/vw.tar.gz -C /tmp
 cp /tmp/vaultwarden /opt/vaultwarden/vaultwarden
