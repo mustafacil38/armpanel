@@ -1,33 +1,27 @@
 === APP ===
 name=WireGuard
 icon=fa-solid fa-shield-halved
-description=Hafif ve guvenli VPN tuneli
+description=Hafif ve guvenli VPN tuneli (Root Gerekir)
 default_port=51820
 config_files=/etc/wireguard/wg0.conf
-process_name=wg-quick
+process_name=wireguard-go
 command_start=wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
 command_stop=wg-quick down wg0 2>/dev/null || killall wireguard-go 2>/dev/null || true
 command_restart=wg-quick down wg0 2>/dev/null || true; killall wireguard-go 2>/dev/null || true; sleep 2; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
 install_script=apt update && apt install -y wireguard-tools iptables
 mkdir -p /etc/wireguard
-if lsmod | grep -q wireguard; then
-echo "WireGuard kernel modulu bulundu"
-else
-echo "Kernel modulu yok, wireguard-go kuruluyor..."
-apt install -y wireguard-go 2>/dev/null || {
-mkdir -p /opt/wireguard-go
-WG_GO_VER=$(curl -s https://api.github.com/repos/WireGuard/wireguard-go-releases/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
-ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ]; then WG_ARCH="arm64"; else WG_ARCH="amd64"; fi
-wget -q "https://github.com/WireGuard/wireguard-go-releases/releases/download/v${WG_GO_VER}/wireguard-go-${WG_GO_VER}-linux-${WG_ARCH}.tar.xz" -O /tmp/wggo.tar.xz
-tar xf /tmp/wggo.tar.xz -C /opt/wireguard-go
-cp /opt/wireguard-go/wireguard-go /usr/local/bin/wireguard-go
-chmod +x /usr/local/bin/wireguard-go
-rm -f /tmp/wggo.tar.xz
-}
+if [ ! -f /usr/local/bin/wireguard-go ]; then
+    echo "wireguard-go kuruluyor..."
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "aarch64" ]; then WG_ARCH="arm64"; else WG_ARCH="amd64"; fi
+    WG_GO_VER=$(curl -s https://api.github.com/repos/WireGuard/wireguard-go-releases/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+    wget -q "https://github.com/WireGuard/wireguard-go-releases/releases/download/v${WG_GO_VER}/wireguard-go-${WG_GO_VER}-linux-${WG_ARCH}.tar.xz" -O /tmp/wggo.tar.xz
+    tar xf /tmp/wggo.tar.xz -C /tmp
+    cp /tmp/wireguard-go/wireguard-go /usr/local/bin/wireguard-go
+    chmod +x /usr/local/bin/wireguard-go
 fi
 if [ ! -f /etc/wireguard/server_private.key ]; then
-wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
+    wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
 fi
 PRIV_KEY=$(cat /etc/wireguard/server_private.key)
 IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
@@ -36,16 +30,14 @@ cat > /etc/wireguard/wg0.conf << WGEOF
 Address = 10.0.0.1/24
 ListenPort = 51820
 PrivateKey = ${PRIV_KEY}
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o ${IFACE} -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o ${IFACE} -j MASQUERADE
 WGEOF
-echo "PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o ${IFACE} -j MASQUERADE" >> /etc/wireguard/wg0.conf
-echo "PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o ${IFACE} -j MASQUERADE" >> /etc/wireguard/wg0.conf
-chmod 600 /etc/wireguard/wg0.conf /etc/wireguard/server_private.key
+chmod 600 /etc/wireguard/wg0.conf
 sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
-echo "WireGuard kuruldu. Konfigurasyon: /etc/wireguard/wg0.conf"
-echo "Port: 51820/UDP"
-echo "Baslatmak icin: wg-quick up wg0"
+echo "WireGuard kuruldu. Port: 51820/UDP"
 uninstall_script=wg-quick down wg0 2>/dev/null || true
-apt remove -y wireguard-tools iptables 2>/dev/null || true
+apt remove -y wireguard-tools 2>/dev/null || true
 rm -rf /etc/wireguard
 === END ===
 
@@ -54,281 +46,49 @@ name=AdGuard Home
 icon=fa-solid fa-shield-halved
 description=Reklam ve izleme engelleyici DNS sunucusu
 default_port=3000
-config_files=/opt/adguardhome/AdGuardHome.yaml
+config_files=/opt/AdGuardHome/AdGuardHome.yaml
 process_name=AdGuardHome
-command_start=/opt/adguardhome/AdGuardHome -c /opt/adguardhome/AdGuardHome.yaml -w /opt/adguardhome &
-command_stop=for pid in $(pgrep -f "AdGuardHome" 2>/dev/null); do kill $pid 2>/dev/null || true; done
-command_restart=for pid in $(pgrep -f "AdGuardHome" 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; /opt/adguardhome/AdGuardHome -c /opt/adguardhome/AdGuardHome.yaml -w /opt/adguardhome &
+command_start=/opt/AdGuardHome/AdGuardHome -s run &
+command_stop=pkill -f AdGuardHome 2>/dev/null || true
+command_restart=pkill -f AdGuardHome 2>/dev/null || true; sleep 1; /opt/AdGuardHome/AdGuardHome -s run &
 install_script=ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-AGH_ARCH="arm64"
-else
-AGH_ARCH="amd64"
-fi
-mkdir -p /opt/adguardhome
-AGH_VER=$(curl -s https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
-wget -q "https://github.com/AdguardTeam/AdGuardHome/releases/download/v${AGH_VER}/AdGuardHome_linux_${AGH_ARCH}.tar.gz" -O /tmp/adguardhome.tar.gz
-tar xzf /tmp/adguardhome.tar.gz -C /tmp
-cp /tmp/AdGuardHome/AdGuardHome /opt/adguardhome/AdGuardHome
-chmod +x /opt/adguardhome/AdGuardHome
-rm -rf /tmp/AdGuardHome /tmp/adguardhome.tar.gz
-/opt/adguardhome/AdGuardHome -s install << EOF
-
-EOF
-echo "AdGuard Home kuruldu. Kurulum: http://localhost:3000"
-uninstall_script=for pid in $(pgrep AdGuardHome 2>/dev/null); do kill $pid 2>/dev/null || true; done
-rm -rf /opt/adguardhome
-=== END ===
-
-=== APP ===
-name=Nextcloud
-icon=fa-solid fa-cloud
-description=Kisisel bulut depolama platformu
-default_port=8081
-config_files=/var/www/nextcloud/config/config.php,/etc/nginx/sites-available/nextcloud
-process_name=php-fpm8.2
-command_start=nginx; php-fpm8.2
-command_stop=pkill nginx 2>/dev/null || true; pkill php-fpm8.2 2>/dev/null || true
-command_restart=pkill nginx 2>/dev/null || true; pkill php-fpm8.2 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
-install_script=apt update && apt install -y php8.2-cli php8.2-common php8.2-mysql php8.2-pgsql php8.2-sqlite3 php8.2-curl php8.2-xml php8.2-mbstring php8.2-zip php8.2-gd php8.2-intl php8.2-opcache php8.2-readline php8.2-bcmath php8.2-imagick unzip mariadb-server mariadb-client
-mkdir -p /run/mysqld
-chown mysql:mysql /run/mysqld 2>/dev/null || true
-if [ ! -d /var/lib/mysql/mysql ]; then
-mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
-fi
-mysqld_safe --datadir=/var/lib/mysql &
-sleep 5
-mysql -e "CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null || true
-mysql -e "CREATE USER IF NOT EXISTS 'nextcloud'@'localhost' IDENTIFIED BY 'nextcloud123'; GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'localhost'; FLUSH PRIVILEGES;" 2>/dev/null || true
-mkdir -p /var/www/nextcloud /var/www/nextcloud/data
-wget -q "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/nextcloud.zip
-unzip -q /tmp/nextcloud.zip -d /tmp
-cp -r /tmp/nextcloud/* /var/www/nextcloud/
-rm -rf /tmp/nextcloud /tmp/nextcloud.zip
-chown -R www-data:www-data /var/www/nextcloud
-chmod -R 755 /var/www/nextcloud
-chmod -R 775 /var/www/nextcloud/data
-chown -R www-data:www-data /var/www/nextcloud/data
-sudo -u www-data php /var/www/nextcloud/occ maintenance:install --database mysql --database-name nextcloud --database-user nextcloud --database-pass nextcloud123 --admin-user admin --admin-pass admin123 2>/dev/null || true
-if [ -f /var/www/nextcloud/config/config.php ]; then
-echo "Nextcloud config.php bulundu, kurulum tamamlandi"
-else
-echo "UYARI: config.php bulunamadi, manuel kurulum gerekebilir"
-fi
-sudo -u www-data php /var/www/nextcloud/occ maintenance:repair 2>/dev/null || true
-sudo -u www-data php /var/www/nextcloud/occ files:scan --all 2>/dev/null || true
-cat > /etc/nginx/sites-available/nextcloud << 'NCEOF'
-server {
-    listen 8081;
-    server_name _;
-    root /var/www/nextcloud;
-    index index.php index.html;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-XSS-Protection "1; mode=block";
-    location = /.well-known/carddav { return 301 /remote.php/dav/; }
-    location = /.well-known/caldav  { return 301 /remote.php/dav/; }
-    location / { try_files $uri $uri/ /index.php?$query_string; }
-    location ~ ^/(?:build|tests|config|lib|3rdparty|templates|data)/ { deny all; }
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
-    }
-    location ~ /\.ht { deny all; }
-}
-NCEOF
-ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
-nginx
-php-fpm8.2
-echo "Nextcloud kuruldu! Kurulum: http://localhost:8081"
-echo "Veritabani: nextcloud / Kullanici: nextcloud / Sifre: nextcloud123"
-uninstall_script=pkill php-fpm8.2 2>/dev/null || true
-pkill nginx 2>/dev/null || true
-rm -rf /var/www/nextcloud
-rm -f /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
-mysql -e "DROP DATABASE IF EXISTS nextcloud;" 2>/dev/null || true
-mysql -e "DROP USER IF EXISTS 'nextcloud'@'localhost';" 2>/dev/null || true
-=== END ===
-
-=== APP ===
-name=n8n
-icon=fa-solid fa-diagram-project
-description=Is akisi otomasyon platformu
-default_port=5678
-config_files=
-process_name=n8n
-command_start=n8n start --port=5678 &
-command_stop=for pid in $(pgrep n8n 2>/dev/null); do kill $pid 2>/dev/null || true; done
-command_restart=for pid in $(pgrep n8n 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; n8n start --port=5678 &
-install_script=apt update && apt install -y nodejs npm
-npm install -g n8n
-mkdir -p /root/.n8n
-echo "n8n kuruldu! Erisim: http://localhost:5678"
-uninstall_script=for pid in $(pgrep n8n 2>/dev/null); do kill $pid 2>/dev/null || true; done
-npm uninstall -g n8n 2>/dev/null || true
-=== END ===
-
-=== APP ===
-name=Ghost
-icon=fa-solid fa-ghost
-description=Modern blog ve yayincilik platformu
-default_port=2368
-config_files=/var/www/ghost/config.production.json
-process_name=node
-command_start=mysqld_safe --datadir=/var/lib/mysql & sleep 2; cd /var/www/ghost && NODE_ENV=production node current/index.js &
-command_stop=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done
-command_restart=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; cd /var/www/ghost && NODE_ENV=production node current/index.js &
-install_script=apt update && apt install -y nodejs npm mariadb-server mariadb-client
-mkdir -p /run/mysqld
-chown mysql:mysql /run/mysqld 2>/dev/null || true
-if [ ! -d /var/lib/mysql/mysql ]; then
-mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
-fi
-mysqld_safe --datadir=/var/lib/mysql &
-sleep 3
-mysql -e "CREATE DATABASE IF NOT EXISTS ghost CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null || true
-mysql -e "CREATE USER IF NOT EXISTS 'ghost'@'localhost' IDENTIFIED BY 'ghost123';" 2>/dev/null || true
-mysql -e "GRANT ALL PRIVILEGES ON ghost.* TO 'ghost'@'localhost'; FLUSH PRIVILEGES;" 2>/dev/null || true
-mkdir -p /var/www/ghost
-npm install -g ghost-cli
-cd /var/www/ghost
-NODE_ENV=production ghost install local --no-setup-linux-user --no-start --db mysql --dbhost localhost --dbname ghost --dbuser ghost --dbpass ghost123 --port 2368 --no-prompt 2>/dev/null || true
-cd /root
-echo "Ghost kuruldu! Erisim: http://localhost:2368"
-uninstall_script=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done
-rm -rf /var/www/ghost
-npm uninstall -g ghost-cli 2>/dev/null || true
-mysql -e "DROP DATABASE IF EXISTS ghost;" 2>/dev/null || true
-mysql -e "DROP USER IF EXISTS 'ghost'@'localhost';" 2>/dev/null || true
+if [ "$ARCH" = "aarch64" ]; then AGH_ARCH="arm64"; else AGH_ARCH="amd64"; fi
+mkdir -p /opt
+AGH_VER=$(curl -s https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest | grep tag_name | cut -d'"' -f4)
+wget -q "https://github.com/AdguardTeam/AdGuardHome/releases/download/${AGH_VER}/AdGuardHome_linux_${AGH_ARCH}.tar.gz" -O /tmp/agh.tar.gz
+tar xzf /tmp/agh.tar.gz -C /opt
+chmod +x /opt/AdGuardHome/AdGuardHome
+/opt/AdGuardHome/AdGuardHome -s install 2>/dev/null || true
+/opt/AdGuardHome/AdGuardHome -s run &
+echo "AdGuard Home kuruldu. http://localhost:3000"
+uninstall_script=pkill -f AdGuardHome 2>/dev/null || true
+rm -rf /opt/AdGuardHome
 === END ===
 
 === APP ===
 name=MariaDB
 icon=fa-solid fa-database
-description=Iliskisel veritabani sunucusu
+description=Iliskisel veritabani sunucusu (Port 3306)
 default_port=3306
 config_files=/etc/mysql/my.cnf
 process_name=mysqld
 command_start=mysqld_safe --datadir=/var/lib/mysql &
-command_stop=mysqladmin shutdown 2>/dev/null || pkill mysqld 2>/dev/null || true
-command_restart=mysqladmin shutdown 2>/dev/null || true; sleep 2; mysqld_safe --datadir=/var/lib/mysql &
+command_stop=mysqladmin -u root shutdown 2>/dev/null || pkill -9 mysqld 2>/dev/null || true
+command_restart=pkill -9 mysqld 2>/dev/null || true; sleep 2; mysqld_safe --datadir=/var/lib/mysql &
 install_script=apt update && apt install -y mariadb-server mariadb-client
-mkdir -p /run/mysqld
-chown mysql:mysql /run/mysqld 2>/dev/null || true
+mkdir -p /run/mysqld /var/lib/mysql
+chown -R mysql:mysql /run/mysqld /var/lib/mysql
 if [ ! -d /var/lib/mysql/mysql ]; then
-mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
+    mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
 fi
 mysqld_safe --datadir=/var/lib/mysql &
-sleep 3
-mysql -e "CREATE USER IF NOT EXISTS 'admin'@'localhost' IDENTIFIED BY '123456';" 2>/dev/null || true
-mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost' WITH GRANT OPTION; FLUSH PRIVILEGES;" 2>/dev/null || true
-echo "MariaDB kuruldu! Kullanici: admin / Sifre: 123456"
-uninstall_script=mysqladmin shutdown 2>/dev/null || pkill mysqld 2>/dev/null || true
-apt remove -y mariadb-server mariadb-client 2>/dev/null || true
+sleep 5
+mysql -e "CREATE USER IF NOT EXISTS 'admin'@'localhost' IDENTIFIED BY '123456';"
+mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+echo "MariaDB kuruldu. Kullanici: admin / Sifre: 123456"
+uninstall_script=pkill -9 mysqld 2>/dev/null || true
+apt remove -y mariadb-server 2>/dev/null || true
 rm -rf /var/lib/mysql /run/mysqld
-=== END ===
-
-=== APP ===
-name=phpMyAdmin
-icon=fa-solid fa-table
-description=MySQL/MariaDB web yonetim arayuzu - Kullanici: admin Sifre: 123456
-default_port=8082
-config_files=/var/www/phpmyadmin/config.inc.php
-process_name=nginx
-command_start=nginx; php-fpm8.2
-command_stop=pkill nginx 2>/dev/null || true
-command_restart=pkill nginx 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
-install_script=apt update && apt install -y php8.2-fpm php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-mysql unzip
-mkdir -p /run/mysqld
-chown mysql:mysql /run/mysqld 2>/dev/null || true
-if [ ! -d /var/lib/mysql/mysql ]; then
-mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
-fi
-mysqld_safe --datadir=/var/lib/mysql &
-sleep 3
-mysql -e "CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED BY '123456'; FLUSH PRIVILEGES;" 2>/dev/null || true
-if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
-sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
-fi
-mkdir -p /var/www/phpmyadmin
-if [ ! -f /var/www/phpmyadmin/index.php ]; then
-PMA_VER=$(curl -s https://api.github.com/repos/phpmyadmin/phpmyadmin/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v | sed 's/RELEASE_//' | sed 's/_/./g')
-wget -q "https://files.phpmyadmin.net/phpMyAdmin/${PMA_VER}/phpMyAdmin-${PMA_VER}-all-languages.zip" -O /tmp/pma.zip
-unzip -q /tmp/pma.zip -d /tmp
-cp -r /tmp/phpMyAdmin-${PMA_VER}-all-languages/* /var/www/phpmyadmin/
-rm -rf /tmp/pma.zip /tmp/phpMyAdmin-${PMA_VER}-all-languages
-fi
-rm -f /var/www/phpmyadmin/config.inc.php
-BLOWFISH=$(openssl rand -hex 24 2>/dev/null || echo "armpanelsecretkey12345678")
-cat > /var/www/phpmyadmin/config.inc.php << EOF
-<?php
-\$cfg['blowfish_secret'] = '${BLOWFISH}';
-\$cfg['Servers'][1]['auth_type'] = 'cookie';
-\$cfg['Servers'][1]['host'] = 'localhost';
-\$cfg['Servers'][1]['compress'] = false;
-\$cfg['Servers'][1]['AllowNoPassword'] = false;
-\$cfg['Servers'][1]['user'] = 'root';
-\$cfg['Servers'][1]['password'] = '123456';
-\$cfg['UploadDir'] = '';
-\$cfg['SaveDir'] = '';
-EOF
-chown -R www-data:www-data /var/www/phpmyadmin
-chmod -R 755 /var/www/phpmyadmin
-cat > /etc/nginx/sites-available/phpmyadmin << 'PMAEOF'
-server {
-    listen 8082;
-    server_name _;
-    root /var/www/phpmyadmin;
-    index index.php index.html;
-    location / { try_files $uri $uri/ /index.php?$query_string; }
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
-    }
-    location ~ /\.ht { deny all; }
-}
-PMAEOF
-ln -sf /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
-nginx
-php-fpm8.2
-echo "phpMyAdmin kuruldu! Erisim: http://localhost:8082"
-echo "Kullanici: admin / Sifre: 123456"
-uninstall_script=pkill nginx 2>/dev/null || true
-pkill php-fpm8.2 2>/dev/null || true
-rm -rf /var/www/phpmyadmin
-rm -f /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
-=== END ===
-
-=== APP ===
-name=Jellyfin
-icon=fa-solid fa-film
-description=Medya sunucusu (film, muzik, dizi)
-default_port=8096
-config_files=/etc/jellyfin
-process_name=jellyfin
-command_start=jellyfin --datadir /etc/jellyfin --cachedir /var/cache/jellyfin &
-command_stop=pkill jellyfin 2>/dev/null || true
-command_restart=pkill jellyfin 2>/dev/null || true; sleep 2; jellyfin --datadir /etc/jellyfin --cachedir /var/cache/jellyfin &
-install_script=apt update && apt install -y apt-transport-https gnupg lsb-release
-if command -v jellyfin >/dev/null 2>&1; then
-echo "Jellyfin zaten kurulu"
-else
-echo "deb https://repo.jellyfin.org/debian $(lsb_release -cs) main" > /etc/apt/sources.list.d/jellyfin.list
-curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key | gpg --dearmor -o /usr/share/keyrings/jellyfin.gpg 2>/dev/null || true
-apt update
-apt install -y jellyfin
-fi
-mkdir -p /etc/jellyfin /var/cache/jellyfin /var/lib/jellyfin
-jellyfin --datadir /etc/jellyfin --cachedir /var/cache/jellyfin &
-echo "Jellyfin kuruldu! Erisim: http://localhost:8096"
-uninstall_script=pkill jellyfin 2>/dev/null || true
-apt remove -y jellyfin 2>/dev/null || true
-rm -rf /etc/jellyfin /var/cache/jellyfin /var/lib/jellyfin
-rm -f /etc/apt/sources.list.d/jellyfin.list
 === END ===
 
 === APP ===
@@ -338,121 +98,119 @@ description=Hafif Bitwarden sifre yoneticisi sunucusu
 default_port=8085
 config_files=/opt/vaultwarden/.env
 process_name=vaultwarden
-command_start=ROCKET_PORT=8085 /opt/vaultwarden/vaultwarden &
-command_stop=pkill vaultwarden 2>/dev/null || true
-command_restart=pkill vaultwarden 2>/dev/null || true; sleep 2; ROCKET_PORT=8085 /opt/vaultwarden/vaultwarden &
-install_script=apt update && apt install -y unzip
-mkdir -p /opt/vaultwarden
-if [ ! -f /opt/vaultwarden/vaultwarden ]; then
-VW_VER=$(curl -s https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+command_start=export ROCKET_PORT=8085; /opt/vaultwarden/vaultwarden &
+command_stop=pkill -f vaultwarden 2>/dev/null || true
+command_restart=pkill -f vaultwarden 2>/dev/null || true; sleep 1; export ROCKET_PORT=8085; /opt/vaultwarden/vaultwarden &
+install_script=apt update && apt install -y curl unzip
+mkdir -p /opt/vaultwarden/data
+VW_VER=$(curl -s https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest | grep tag_name | cut -d'"' -f4)
 ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-VW_ARCH="aarch64"
-else
-VW_ARCH="x86_64"
-fi
+if [ "$ARCH" = "aarch64" ]; then VW_ARCH="aarch64"; else VW_ARCH="x86_64"; fi
 wget -q "https://github.com/dani-garcia/vaultwarden/releases/download/${VW_VER}/vaultwarden-${VW_VER}-${VW_ARCH}-unknown-linux-musl.tar.gz" -O /tmp/vw.tar.gz
 tar xzf /tmp/vw.tar.gz -C /tmp
 cp /tmp/vaultwarden /opt/vaultwarden/vaultwarden
 chmod +x /opt/vaultwarden/vaultwarden
 rm -f /tmp/vw.tar.gz
-fi
-mkdir -p /opt/vaultwarden/data
-ROCKET_PORT=8085 /opt/vaultwarden/vaultwarden &
-echo "Vaultwarden kuruldu! Erisim: http://localhost:8085"
-echo "Oncelikle bir kullanici olusturun!"
-uninstall_script=pkill vaultwarden 2>/dev/null || true
+export ROCKET_PORT=8085
+/opt/vaultwarden/vaultwarden &
+echo "Vaultwarden kuruldu. Port: 8085"
+uninstall_script=pkill -f vaultwarden 2>/dev/null || true
 rm -rf /opt/vaultwarden
+=== END ===
+
+=== APP ===
+name=Nextcloud
+icon=fa-solid fa-cloud
+description=Kisisel bulut depolama platformu (Port 8081)
+default_port=8081
+config_files=/var/www/nextcloud/config/config.php
+process_name=php-fpm
+command_start=nginx; php-fpm8.2 &
+command_stop=pkill nginx; pkill php-fpm8.2
+command_restart=pkill nginx; pkill php-fpm8.2; sleep 1; nginx; php-fpm8.2 &
+install_script=apt update && apt install -y nginx php8.2-fpm php8.2-mysql php8.2-gd php8.2-curl php8.2-zip php8.2-xml php8.2-mbstring unzip
+mkdir -p /var/www/nextcloud
+wget -q "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/next.zip
+unzip -q /tmp/next.zip -d /var/www/
+chown -R www-data:www-data /var/www/nextcloud
+# PHP-FPM listen fix
+sed -i 's/^listen = .*/listen = 127.0.0.1:9000/' /etc/php/8.2/fpm/pool.d/www.conf
+cat > /etc/nginx/sites-available/nextcloud << 'EOF'
+server {
+    listen 8081;
+    root /var/www/nextcloud;
+    index index.php;
+    location / { try_files $uri $uri/ /index.php; }
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+}
+EOF
+ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
+nginx -s reload || nginx
+php-fpm8.2 &
+echo "Nextcloud kuruldu. Port: 8081"
+uninstall_script=pkill -f nginx; pkill -f php-fpm
+rm -rf /var/www/nextcloud /etc/nginx/sites-available/nextcloud
 === END ===
 
 === APP ===
 name=Uptime Kuma
 icon=fa-solid fa-heart-pulse
-description=Sunucu ve site izleme araci
+description=Sunucu ve site izleme araci (Port 3001)
 default_port=3001
 config_files=
-process_name=node
+process_name=uptime-kuma
 command_start=cd /opt/uptime-kuma && node server/server.js &
-command_stop=for pid in $(pgrep -f uptime-kuma 2>/dev/null); do kill $pid 2>/dev/null || true; done
-command_restart=for pid in $(pgrep -f uptime-kuma 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; cd /opt/uptime-kuma && node server/server.js &
-install_script=apt update && apt install -y nodejs npm
+command_stop=pkill -f uptime-kuma 2>/dev/null || true
+command_restart=pkill -f uptime-kuma 2>/dev/null || true; sleep 1; cd /opt/uptime-kuma && node server/server.js &
+install_script=apt update && apt install -y nodejs npm git
 mkdir -p /opt/uptime-kuma
-if [ ! -f /opt/uptime-kuma/package.json ]; then
-UK_VER=$(curl -s https://api.github.com/repos/louislam/uptime-kuma/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
-wget -q "https://github.com/louislam/uptime-kuma/releases/download/${UK_VER}/uptime-kuma-${UK_VER}.tar.gz" -O /tmp/uk.tar.gz
-tar xzf /tmp/uk.tar.gz -C /opt/uptime-kuma
-rm -f /tmp/uk.tar.gz
+git clone https://github.com/louislam/uptime-kuma.git /opt/uptime-kuma
 cd /opt/uptime-kuma
-npm install --production 2>/dev/null || true
-cd /root
-fi
-cd /opt/uptime-kuma && node server/server.js &
-echo "Uptime Kuma kuruldu! Erisim: http://localhost:3001"
-uninstall_script=for pid in $(pgrep -f uptime-kuma 2>/dev/null); do kill $pid 2>/dev/null || true; done
+npm run setup
+echo "Uptime Kuma kuruldu. Port: 3001"
+uninstall_script=pkill -f uptime-kuma 2>/dev/null || true
 rm -rf /opt/uptime-kuma
 === END ===
 
 === APP ===
-name=Syncthing
-icon=fa-solid fa-arrows-rotate
-description=Cihazlar arasi dosya senkronizasyonu
-default_port=8384
-config_files=/root/.config/syncthing/config.xml
-process_name=syncthing
-command_start=syncthing serve --no-browser --gui-address=0.0.0.0:8384 &
-command_stop=syncthing cli shutdown 2>/dev/null || pkill syncthing 2>/dev/null || true
-command_restart=syncthing cli shutdown 2>/dev/null || pkill syncthing 2>/dev/null || true; sleep 2; syncthing serve --no-browser --gui-address=0.0.0.0:8384 &
-install_script=apt update && apt install -y syncthing
-mkdir -p /root/.config/syncthing
-if [ ! -f /root/.config/syncthing/config.xml ]; then
-syncthing generate 2>/dev/null || true
-fi
-sed -i 's|127.0.0.1:8384|0.0.0.0:8384|g' /root/.config/syncthing/config.xml 2>/dev/null || true
-syncthing serve --no-browser --gui-address=0.0.0.0:8384 &
-echo "Syncthing kuruldu! Erisim: http://localhost:8384"
-uninstall_script=syncthing cli shutdown 2>/dev/null || pkill syncthing 2>/dev/null || true
-apt remove -y syncthing 2>/dev/null || true
-rm -rf /root/.config/syncthing
-=== END ===
-
-=== APP ===
-name=Samba
-icon=fa-solid fa-share-nodes
-description=Dosya paylasim sunucusu (SMB/CIFS)
-default_port=445
-config_files=/etc/samba/smb.conf
-process_name=smbd
-command_start=smbd; sleep 1; nmbd
-command_stop=pkill smbd 2>/dev/null || true; pkill nmbd 2>/dev/null || true
-command_restart=pkill smbd 2>/dev/null || true; pkill nmbd 2>/dev/null || true; sleep 1; smbd; nmbd
-install_script=apt update && apt install -y samba
-mkdir -p /root/shared
-chmod 777 /root/shared
-cat > /etc/samba/smb.conf << 'SMBEOF'
-[global]
-workgroup = WORKGROUP
-server string = ArmPanel Samba
-map to guest = Bad User
-dns proxy = no
-log file = /var/log/samba/log.%m
-max log size = 1000
-
-[shared]
-path = /root/shared
-browseable = yes
-writable = yes
-guest ok = yes
-read only = no
-create mask = 0777
-directory mask = 0777
-SMBEOF
-testparm -s >/dev/null 2>&1 || true
-smbd
-sleep 1
-nmbd
-echo "Samba kuruldu! Erisim: smb://localhost:445"
-uninstall_script=pkill smbd 2>/dev/null || true
-pkill nmbd 2>/dev/null || true
-apt remove -y samba 2>/dev/null || true
-rm -rf /root/shared
+name=phpMyAdmin
+icon=fa-solid fa-table
+description=MariaDB web yonetim arayuzu (Port 8082)
+default_port=8082
+config_files=/var/www/phpmyadmin/config.inc.php
+process_name=nginx
+command_start=nginx; php-fpm8.2 &
+command_stop=pkill nginx; pkill php-fpm8.2
+command_restart=pkill nginx; pkill php-fpm8.2; sleep 1; nginx; php-fpm8.2 &
+install_script=apt update && apt install -y php8.2-fpm php8.2-mysql unzip nginx
+mkdir -p /var/www/phpmyadmin
+PMA_VER="5.2.1"
+wget -q "https://files.phpmyadmin.net/phpMyAdmin/${PMA_VER}/phpMyAdmin-${PMA_VER}-all-languages.zip" -O /tmp/pma.zip
+unzip -q /tmp/pma.zip -d /tmp
+cp -r /tmp/phpMyAdmin-${PMA_VER}-all-languages/* /var/www/phpmyadmin/
+# Config
+cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
+sed -i "s/\$cfg\['blowfish_secret'\] = '';/\$cfg\['blowfish_secret'\] = 'armpanelsecret32charsbase64here';/" /var/www/phpmyadmin/config.inc.php
+# Nginx
+cat > /etc/nginx/sites-available/pma << 'EOF'
+server {
+    listen 8082;
+    root /var/www/phpmyadmin;
+    index index.php;
+    location / { try_files $uri $uri/ /index.php; }
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+}
+EOF
+ln -sf /etc/nginx/sites-available/pma /etc/nginx/sites-enabled/pma
+nginx -s reload || nginx
+php-fpm8.2 &
+echo "phpMyAdmin kuruldu. Port: 8082"
+uninstall_script=pkill -f nginx; pkill -f php-fpm
+rm -rf /var/www/phpmyadmin
 === END ===

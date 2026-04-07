@@ -21,34 +21,39 @@ def _parse_appstore(text):
         block = block.strip()
         if not block or block.startswith("=== END ==="):
             continue
+            
         end_idx = block.find("=== END ===")
         if end_idx != -1:
             block = block[:end_idx]
+            
         app = {}
-        last_key = None
-        for line in block.strip().splitlines():
-            s = line.strip().replace('\r', '')
-            if not s:
-                continue
+        current_key = None
+        
+        for line in block.splitlines():
+            # Check if this line starts a new known key: name=, icon=, etc.
+            match = None
+            for key in KNOWN_KEYS:
+                if line.startswith(key + "="):
+                    match = key
+                    break
             
-            is_known_key = False
-            if "=" in s:
-                key_candidate, _, val_candidate = s.partition("=")
-                key_candidate = key_candidate.strip()
-                if key_candidate in KNOWN_KEYS:
-                    value = val_candidate.strip()
-                    if key_candidate == "default_port":
-                        try:
-                            value = int(value)
-                        except ValueError:
-                            value = 0
-                    app[key_candidate] = value
-                    last_key = key_candidate
-                    is_known_key = True
-            
-            if not is_known_key and last_key in ("install_script", "uninstall_script"):
-                app[last_key] = app.get(last_key, "") + "\n" + s
-                
+            if match:
+                current_key = match
+                val = line[len(match)+1:].strip()
+                if current_key == "default_port":
+                    try:
+                        app[current_key] = int(val)
+                    except ValueError:
+                        app[current_key] = 0
+                else:
+                    app[current_key] = val
+            elif current_key:
+                # Append to current multiline key
+                if app.get(current_key):
+                    app[current_key] += "\n" + line
+                else:
+                    app[current_key] = line
+                    
         if app.get("name"):
             apps.append(app)
     return apps

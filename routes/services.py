@@ -209,13 +209,19 @@ def _is_config_allowed(path):
 def _is_running(process_name):
     if not process_name:
         return False
+    
+    # Process name can be a comma-separated list of names to check
+    names_to_check = [n.strip().lower() for n in process_name.split(",") if n.strip()]
+    
     for proc in psutil.process_iter(["name", "cmdline"]):
         try:
-            name = proc.info.get("name", "")
-            cmdline = " ".join(proc.info.get("cmdline", []) or [])
-            if process_name.lower() in name.lower() or process_name.lower() in cmdline.lower():
-                return True
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            name = (proc.info.get("name") or "").lower()
+            cmdline = " ".join(proc.info.get("cmdline") or []).lower()
+            
+            for part in names_to_check:
+                if part in name or part in cmdline:
+                    return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
     return False
 
