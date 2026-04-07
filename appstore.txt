@@ -260,9 +260,7 @@ unzip -q /tmp/pma.zip -d /tmp
 cp -r /tmp/phpMyAdmin-${PMA_VER}-all-languages/* /var/www/phpmyadmin/
 rm -rf /tmp/pma.zip /tmp/phpMyAdmin-${PMA_VER}-all-languages
 fi
-if [ ! -f /var/www/phpmyadmin/config.inc.php ]; then
-cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
-fi
+rm -f /var/www/phpmyadmin/config.inc.php
 BLOWFISH=$(openssl rand -hex 24 2>/dev/null || echo "armpanelsecretkey12345678")
 cat > /var/www/phpmyadmin/config.inc.php << EOF
 <?php
