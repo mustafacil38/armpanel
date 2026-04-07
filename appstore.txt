@@ -1,4 +1,27 @@
 === APP ===
-name=Bakim Modu
-description=Hata tespiti yapiliyor, lutfen bekleyin...
+name=WireGuard + Web Panel
+icon=fa-solid fa-shield-halved
+description=Hafif ve guvenli VPN tuneli (Root Gerekir) Panel: admin / admin
+default_port=5000
+config_files=/etc/wireguard/wg0.conf
+process_name=wireguard-ui,wireguard-go
+command_start=export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; export WUI_BIND="0.0.0.0:5000"; export SESSION_SECRET="armpanel_secret_session_key"; wg-quick up wg0 2>/dev/null; cd /opt/wireguard-ui && ./wireguard-ui &
+command_stop=wg-quick down wg0 2>/dev/null; pkill -f wireguard-ui 2>/dev/null || true
+command_restart=pkill -f wireguard-ui 2>/dev/null; wg-quick down wg0 2>/dev/null; sleep 1; export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; export WUI_BIND="0.0.0.0:5000"; export SESSION_SECRET="armpanel_secret_session_key"; wg-quick up wg0 2>/dev/null; cd /opt/wireguard-ui && ./wireguard-ui &
+install_script=apt update && apt install -y wireguard-tools wireguard-go iptables curl unzip && mkdir -p /etc/wireguard /opt/wireguard-ui && [ ! -c /dev/net/tun ] && (mkdir -p /dev/net; mknod /dev/net/tun c 10 200; chmod 600 /dev/net/tun) || true; if [ ! -f /opt/wireguard-ui/wireguard-ui ]; then ARCH=$(uname -m); [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ] && WUI_ARCH="arm64" || WUI_ARCH="amd64"; wget -q "https://github.com/ngoduykhanh/wireguard-ui/releases/download/v0.6.2/wireguard-ui-v0.6.2-linux-${WUI_ARCH}.tar.gz" -O /tmp/wui.tar.gz && tar xzf /tmp/wui.tar.gz -C /opt/wireguard-ui && chmod +x /opt/wireguard-ui/wireguard-ui && rm -f /tmp/wui.tar.gz; fi; if [ ! -f /etc/wireguard/wg0.conf ]; then PRIV_KEY=$(wg genkey); IFACE=$(ip route | grep default | awk '{print $5}' | head -1); echo "[Interface]\nAddress = 10.0.0.1/24\nListenPort = 51820\nPrivateKey = ${PRIV_KEY}\nPostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o ${IFACE} -j MASQUERADE\nPostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o ${IFACE} -j MASQUERADE" > /etc/wireguard/wg0.conf; fi; sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
+uninstall_script=wg-quick down wg0 2>/dev/null; pkill -f wireguard-ui; rm -rf /opt/wireguard-ui /etc/wireguard
+=== END ===
+
+=== APP ===
+name=Nextcloud
+icon=fa-solid fa-cloud
+description=Kisisel bulut depolama platformu (Port 8081)
+default_port=8081
+config_files=/var/www/nextcloud/config/config.php
+process_name=php-fpm,nginx
+command_start=nginx; php-fpm8.2 &
+command_stop=pkill nginx; pkill php-fpm8.2
+command_restart=pkill nginx; pkill php-fpm8.2; sleep 1; nginx; php-fpm8.2 &
+install_script=apt update && apt install -y nginx php8.2-fpm php8.2-mysql php8.2-gd php8.2-curl php8.2-zip php8.2-xml php8.2-mbstring unzip && mkdir -p /var/www/nextcloud && wget -q "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/next.zip && unzip -q /tmp/next.zip -d /var/www/ && chown -R www-data:www-data /var/www/nextcloud && sed -i "s/memory_limit = .*/memory_limit = 512M/" /etc/php/8.2/cli/php.ini && sed -i 's/^listen = .*/listen = 127.0.0.1:9000/' /etc/php/8.2/fpm/pool.d/www.conf && echo "server { listen 8081; server_name _; root /var/www/nextcloud; include /etc/nginx/mime.types; types { application/javascript mjs; } location / { rewrite ^ /index.php; } location ~ ^\/(?:index|remote|public|cron|core\/ajax\/update|status|ocs\/v[12]|updater\/.+|ocm-provider\/.+)\.php(?:$|\/) { fastcgi_split_path_info ^(.+?\.php)(\/.*|)$; include fastcgi_params; fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name; fastcgi_pass 127.0.0.1:9000; } location ~ \.(?:css|js|mjs|woff2?|svg|gif|png|html|ttf|ico|jpg|jpeg)$ { try_files \$uri /index.php\$request_uri; } }" > /etc/nginx/sites-available/nextcloud && ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud && nginx -s reload && php-fpm8.2 &
+uninstall_script=pkill -f nginx; pkill -f php-fpm; rm -rf /var/www/nextcloud /etc/nginx/sites-available/nextcloud
 === END ===
