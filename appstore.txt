@@ -124,7 +124,7 @@ icon=fa-solid fa-cloud
 description=Kisisel bulut depolama platformu (Port 8081)
 default_port=8081
 config_files=/var/www/nextcloud/config/config.php
-process_name=php-fpm
+process_name=php-fpm,nginx
 command_start=nginx; php-fpm8.2 &
 command_stop=pkill nginx; pkill php-fpm8.2
 command_restart=pkill nginx; pkill php-fpm8.2; sleep 1; nginx; php-fpm8.2 &
@@ -133,23 +133,54 @@ mkdir -p /var/www/nextcloud
 wget -q "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/next.zip
 unzip -q /tmp/next.zip -d /var/www/
 chown -R www-data:www-data /var/www/nextcloud
-# PHP-FPM listen fix
+# PHP Optimizations
+sed -i "s/memory_limit = .*/memory_limit = 512M/" /etc/php/8.2/cli/php.ini
+[ -f /etc/php/8.2/fpm/php.ini ] && sed -i "s/memory_limit = .*/memory_limit = 512M/" /etc/php/8.2/fpm/php.ini
 sed -i 's/^listen = .*/listen = 127.0.0.1:9000/' /etc/php/8.2/fpm/pool.d/www.conf
+# Nextcloud Robust Nginx Config with MJS support
 cat > /etc/nginx/sites-available/nextcloud << 'EOF'
 server {
     listen 8081;
+    server_name _;
     root /var/www/nextcloud;
-    index index.php;
-    location / { try_files $uri $uri/ /index.php; }
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
+    include /etc/nginx/mime.types;
+    types { application/javascript mjs; }
+    add_header Referrer-Policy "no-referrer" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    location = /robots.txt { allow all; log_not_found off; access_log off; }
+    location = /.well-known/carddav { return 301 /remote.php/dav; }
+    location = /.well-known/caldav  { return 301 /remote.php/dav; }
+    client_max_body_size 512M;
+    fastcgi_buffers 64 4K;
+    location / { rewrite ^ /index.php; }
+    location ~ ^\/(?:index|remote|public|cron|core\/ajax\/update|status|ocs\/v[12]|updater\/.+|ocm-provider\/.+)\.php(?:$|\/) {
+        fastcgi_split_path_info ^(.+?\.php)(\/.*|)$;
+        set $path_info $fastcgi_path_info;
+        try_files $fastcgi_script_name =404;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $path_info;
+        fastcgi_param HTTPS off;
+        fastcgi_param modHeadersAvailable true;
         fastcgi_pass 127.0.0.1:9000;
+        fastcgi_intercept_errors on;
+    }
+    location ~ \.(?:css|js|mjs|woff2?|svg|gif|png|html|ttf|ico|jpg|jpeg)$ {
+        try_files $uri /index.php$request_uri;
+        access_log off;
     }
 }
 EOF
 ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
 nginx -s reload || nginx
 php-fpm8.2 &
+# Post-install NC optimization
+sleep 2
+sudo -u www-data php /var/www/nextcloud/occ app:disable richdocuments 2>/dev/null || true
+sudo -u www-data php /var/www/nextcloud/occ app:disable richdocumentscode 2>/dev/null || true
+sudo -u www-data php /var/www/nextcloud/occ config:system:set trusted_domains 1 --value="*"
 echo "Nextcloud kuruldu. Port: 8081"
 uninstall_script=pkill -f nginx; pkill -f php-fpm
 rm -rf /var/www/nextcloud /etc/nginx/sites-available/nextcloud
@@ -181,12 +212,17 @@ icon=fa-solid fa-table
 description=MariaDB web yonetim arayuzu (Port 8082)
 default_port=8082
 config_files=/var/www/phpmyadmin/config.inc.php
-process_name=nginx
+process_name=nginx,php-fpm
 command_start=nginx; php-fpm8.2 &
 command_stop=pkill nginx; pkill php-fpm8.2
 command_restart=pkill nginx; pkill php-fpm8.2; sleep 1; nginx; php-fpm8.2 &
 install_script=apt update && apt install -y php8.2-fpm php8.2-mysql unzip nginx
 mkdir -p /var/www/phpmyadmin
+# PHP Optimizations
+sed -i "s/memory_limit = .*/memory_limit = 512M/" /etc/php/8.2/cli/php.ini
+[ -f /etc/php/8.2/fpm/php.ini ] && sed -i "s/memory_limit = .*/memory_limit = 512M/" /etc/php/8.2/fpm/php.ini
+sed -i 's/^listen = .*/listen = 127.0.0.1:9000/' /etc/php/8.2/fpm/pool.d/www.conf
+# PMA Install
 PMA_VER="5.2.1"
 wget -q "https://files.phpmyadmin.net/phpMyAdmin/${PMA_VER}/phpMyAdmin-${PMA_VER}-all-languages.zip" -O /tmp/pma.zip
 unzip -q /tmp/pma.zip -d /tmp
