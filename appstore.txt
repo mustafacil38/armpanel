@@ -113,6 +113,7 @@ chown -R www-data:www-data /var/www/nextcloud
 chmod -R 755 /var/www/nextcloud
 chmod -R 775 /var/www/nextcloud/data
 chown -R www-data:www-data /var/www/nextcloud/data
+sudo -u www-data php /var/www/nextcloud/occ maintenance:install --database mysql --database-name nextcloud --database-user nextcloud --database-pass nextcloud123 --admin-user admin --admin-pass admin123 2>/dev/null || true
 sudo -u www-data php /var/www/nextcloud/occ maintenance:repair 2>/dev/null || true
 sudo -u www-data php /var/www/nextcloud/occ files:scan --all 2>/dev/null || true
 cat > /etc/nginx/sites-available/nextcloud << 'NCEOF'
