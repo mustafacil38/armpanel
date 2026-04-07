@@ -63,13 +63,15 @@ if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
     sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
 
-cat > /etc/php/8.2/fpm/conf.d/99-armpanel.ini << 'PHPEOF'
-upload_max_filesize = 512M
-post_max_size = 512M
-memory_limit = 512M
-max_execution_time = 3600
-output_buffering = 4096
-PHPEOF
+PHPINI="/etc/php/8.2/fpm/php.ini"
+if [ -f "$PHPINI" ]; then
+    sed -i 's/^upload_max_filesize.*/upload_max_filesize = 512M/' "$PHPINI"
+    sed -i 's/^post_max_size.*/post_max_size = 512M/' "$PHPINI"
+    sed -i 's/^memory_limit.*/memory_limit = 512M/' "$PHPINI"
+    sed -i 's/^max_execution_time.*/max_execution_time = 3600/' "$PHPINI"
+    sed -i 's/^output_buffering.*/output_buffering = 4096/' "$PHPINI"
+    sed -i 's/^;output_buffering.*/output_buffering = 4096/' "$PHPINI"
+fi
 
 echo ""
 
