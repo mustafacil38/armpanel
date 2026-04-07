@@ -69,8 +69,6 @@ if [ -f "$PHPINI" ]; then
     sed -i 's/^post_max_size.*/post_max_size = 512M/' "$PHPINI"
     sed -i 's/^memory_limit.*/memory_limit = 512M/' "$PHPINI"
     sed -i 's/^max_execution_time.*/max_execution_time = 3600/' "$PHPINI"
-    sed -i 's/^output_buffering.*/output_buffering = 4096/' "$PHPINI"
-    sed -i 's/^;output_buffering.*/output_buffering = 4096/' "$PHPINI"
 fi
 
 echo ""
