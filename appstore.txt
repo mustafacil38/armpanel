@@ -258,8 +258,19 @@ fi
 if [ ! -f /var/www/phpmyadmin/config.inc.php ]; then
 cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
 fi
-BLOWFISH=$(openssl rand -hex 16 2>/dev/null || echo "armpanel-secret-key-12345678")
-sed -i "s/\$cfg\['blowfish_secret'\] = ''/\$cfg['blowfish_secret'] = '${BLOWFISH}'/" /var/www/phpmyadmin/config.inc.php 2>/dev/null || true
+BLOWFISH=$(openssl rand -hex 24 2>/dev/null || echo "armpanelsecretkey12345678")
+cat > /var/www/phpmyadmin/config.inc.php << 'PMAEOF'
+<?php
+$cfg['blowfish_secret'] = '${BLOWFISH}';
+$cfg['Servers'][1]['auth_type'] = 'cookie';
+$cfg['Servers'][1]['host'] = 'localhost';
+$cfg['Servers'][1]['compress'] = false;
+$cfg['Servers'][1]['AllowNoPassword'] = false;
+$cfg['Servers'][1]['user'] = 'root';
+$cfg['Servers'][1]['password'] = '123456';
+$cfg['UploadDir'] = '';
+$cfg['SaveDir'] = '';
+PMAEOF
 chown -R www-data:www-data /var/www/phpmyadmin
 cat > /etc/nginx/sites-available/phpmyadmin << 'PMAEOF'
 server {
