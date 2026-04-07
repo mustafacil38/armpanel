@@ -5,11 +5,27 @@ description=Hafif ve guvenli VPN tuneli
 default_port=51820
 config_files=/etc/wireguard/wg0.conf
 process_name=wg-quick
-command_start=wg-quick up wg0
-command_stop=wg-quick down wg0
-command_restart=wg-quick down wg0; sleep 2; wg-quick up wg0
+command_start=wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
+command_stop=wg-quick down wg0 2>/dev/null || pkill -f 'wireguard-go wg0' 2>/dev/null || true
+command_restart=wg-quick down wg0 2>/dev/null || true; pkill -f 'wireguard-go wg0' 2>/dev/null || true; sleep 2; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
 install_script=apt update && apt install -y wireguard-tools iptables
 mkdir -p /etc/wireguard
+if lsmod | grep -q wireguard; then
+echo "WireGuard kernel modulu bulundu"
+else
+echo "Kernel modulu yok, wireguard-go kuruluyor..."
+apt install -y wireguard-go 2>/dev/null || {
+mkdir -p /opt/wireguard-go
+WG_GO_VER=$(curl -s https://api.github.com/repos/WireGuard/wireguard-go-releases/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ]; then WG_ARCH="arm64"; else WG_ARCH="amd64"; fi
+wget -q "https://github.com/WireGuard/wireguard-go-releases/releases/download/v${WG_GO_VER}/wireguard-go-${WG_GO_VER}-linux-${WG_ARCH}.tar.xz" -O /tmp/wggo.tar.xz
+tar xf /tmp/wggo.tar.xz -C /opt/wireguard-go
+mv /opt/wireguard-go/wireguard-go /usr/local/bin/wireguard-go
+chmod +x /usr/local/bin/wireguard-go
+rm -f /tmp/wggo.tar.xz
+}
+fi
 if [ ! -f /etc/wireguard/server_private.key ]; then
 wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
 fi
@@ -27,6 +43,7 @@ chmod 600 /etc/wireguard/wg0.conf /etc/wireguard/server_private.key
 sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
 echo "WireGuard kuruldu. Konfigurasyon: /etc/wireguard/wg0.conf"
 echo "Port: 51820/UDP"
+echo "Baslatmak icin: wg-quick up wg0"
 uninstall_script=wg-quick down wg0 2>/dev/null || true
 apt remove -y wireguard-tools iptables 2>/dev/null || true
 rm -rf /etc/wireguard
