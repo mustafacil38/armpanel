@@ -62,6 +62,15 @@ apt install -y php8.2-fpm php8.2-cli php8.2-common php8.2-mysql php8.2-pgsql php
 if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
     sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
+
+cat > /etc/php/8.2/fpm/conf.d/99-armpanel.ini << 'PHPEOF'
+upload_max_filesize = 512M
+post_max_size = 512M
+memory_limit = 512M
+max_execution_time = 3600
+output_buffering = 4096
+PHPEOF
+
 echo ""
 
 # ── ttyd ──
