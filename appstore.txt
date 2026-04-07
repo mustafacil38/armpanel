@@ -1,45 +1,41 @@
 === APP ===
-name=WireGuard
+name=WireGuard + Web Panel
 icon=fa-solid fa-shield-halved
-description=Hafif ve guvenli VPN tuneli (Root Gerekir)
-default_port=51820
-config_files=/etc/wireguard/wg0.conf
-process_name=wireguard-go
-command_start=export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; export WG_THREADS=1; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
-command_stop=wg-quick down wg0 2>/dev/null || killall wireguard-go 2>/dev/null || true
-command_restart=wg-quick down wg0 2>/dev/null || true; killall wireguard-go 2>/dev/null || true; sleep 2; export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; wg-quick up wg0 2>/dev/null || wireguard-go wg0 &
-install_script=apt update && apt install -y wireguard-tools iptables curl
-mkdir -p /etc/wireguard
+description=Web arayuzlu VPN sunucusu (Panel Port: 5000 / Root Gerekir)
+default_port=5000
+config_files=/etc/wireguard/wg0.conf,/opt/wireguard-ui/db/wireguard-ui.db
+process_name=wireguard-ui,wireguard-go
+command_start=export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; wg-quick up wg0 2>/dev/null; cd /opt/wireguard-ui && ./wireguard-ui &
+command_stop=wg-quick down wg0 2>/dev/null; pkill -f wireguard-ui 2>/dev/null || true
+command_restart=pkill -f wireguard-ui 2>/dev/null; wg-quick down wg0 2>/dev/null; sleep 1; export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go; wg-quick up wg0 2>/dev/null; cd /opt/wireguard-ui && ./wireguard-ui &
+install_script=apt update && apt install -y wireguard-tools wireguard-go iptables curl unzip
+mkdir -p /etc/wireguard /opt/wireguard-ui
 # Tun cihazi kontrolü ve olusturma (Root gerektirir)
 if [ ! -c /dev/net/tun ]; then
     mkdir -p /dev/net
     mknod /dev/net/tun c 10 200 2>/dev/null || true
     chmod 600 /dev/net/tun 2>/dev/null || true
 fi
-# wireguard-go kurulumu (Telefonlar icin userspace zorunlu)
-if [ ! -f /usr/local/bin/wireguard-go ]; then
-    echo "wireguard-go kuruluyor..."
+# WireGuard-UI kurulumu
+if [ ! -f /opt/wireguard-ui/wireguard-ui ]; then
     ARCH=$(uname -m)
     if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" || "$ARCH" == "armv8"* ]]; then
-        WG_ARCH="arm64"
+        WUI_ARCH="arm64"
     else
-        WG_ARCH="amd64"
+        WUI_ARCH="amd64"
     fi
-    WG_GO_VER=$(curl -s https://api.github.com/repos/WireGuard/wireguard-go-releases/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
-    wget -q "https://github.com/WireGuard/wireguard-go-releases/releases/download/v${WG_GO_VER}/wireguard-go-${WG_GO_VER}-linux-${WG_ARCH}.tar.xz" -O /tmp/wggo.tar.xz
-    mkdir -p /tmp/wggo_ext
-    tar xf /tmp/wggo.tar.xz -C /tmp/wggo_ext
-    # Klasör isminden bagimsiz binary bulma ve kopyalama
-    find /tmp/wggo_ext -type f -name "wireguard-go" -exec cp {} /usr/local/bin/wireguard-go \;
-    chmod +x /usr/local/bin/wireguard-go
-    rm -rf /tmp/wggo.tar.xz /tmp/wggo_ext
+    WUI_VER=$(curl -s https://api.github.com/repos/ngoduykhanh/wireguard-ui/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+    wget -q "https://github.com/ngoduykhanh/wireguard-ui/releases/download/v${WUI_VER}/wireguard-ui-v${WUI_VER}-linux-${WUI_ARCH}.tar.gz" -O /tmp/wui.tar.gz
+    tar xzf /tmp/wui.tar.gz -C /opt/wireguard-ui
+    chmod +x /opt/wireguard-ui/wireguard-ui
+    rm -f /tmp/wui.tar.gz
 fi
-if [ ! -f /etc/wireguard/server_private.key ]; then
-    wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
-fi
-PRIV_KEY=$(cat /etc/wireguard/server_private.key)
-IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
-cat > /etc/wireguard/wg0.conf << WGEOF
+# Temel WG yapilandirmasi yoksa olustur
+if [ ! -f /etc/wireguard/wg0.conf ]; then
+    PRIV_KEY=$(wg genkey)
+    PUB_KEY=$(echo "${PRIV_KEY}" | wg pubkey)
+    IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
+    cat > /etc/wireguard/wg0.conf << WGEOF
 [Interface]
 Address = 10.0.0.1/24
 ListenPort = 51820
@@ -47,12 +43,10 @@ PrivateKey = ${PRIV_KEY}
 PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o ${IFACE} -j MASQUERADE
 PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o ${IFACE} -j MASQUERADE
 WGEOF
-chmod 600 /etc/wireguard/wg0.conf
+fi
 sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
-echo "WireGuard kuruldu. Userspace modunda baslatilacak."
-uninstall_script=wg-quick down wg0 2>/dev/null || true
-apt remove -y wireguard-tools 2>/dev/null || true
-rm -rf /etc/wireguard /usr/local/bin/wireguard-go
+echo "WireGuard + Web Panel kuruldu. Panel: http://localhost:5000"
+uninstall_script=wg-quick down wg0 2>/dev/null; pkill -f wireguard-ui; rm -rf /opt/wireguard-ui /etc/wireguard
 === END ===
 
 === APP ===
