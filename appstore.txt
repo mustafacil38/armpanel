@@ -246,8 +246,8 @@ mkdir -p /var/www/html/phpmyadmin
 if [ ! -f /var/www/html/phpmyadmin/index.php ]; then
 wget "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip" -O /tmp/pma.zip
 unzip -q /tmp/pma.zip -d /tmp
-cp -r /tmp/phpMyAdmin-${PMA_VER}-all-languages/* /var/www/html/phpmyadmin/
-rm -rf /tmp/pma.zip /tmp/phpMyAdmin-${PMA_VER}-all-languages
+cp -r /tmp/phpMyAdmin-5.2.3-all-languages/* /var/www/html/phpmyadmin/
+rm -rf /tmp/pma.zip /tmp/phpMyAdmin-5.2.3-all-languages
 fi
 if [ ! -f /var/www/html/phpmyadmin/config.inc.php ]; then
 cp /var/www/html/phpmyadmin/config.sample.inc.php /var/www/html/phpmyadmin/config.inc.php
