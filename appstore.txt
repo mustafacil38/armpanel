@@ -21,7 +21,7 @@ ARCH=$(uname -m)
 if [ "$ARCH" = "aarch64" ]; then WG_ARCH="arm64"; else WG_ARCH="amd64"; fi
 wget -q "https://github.com/WireGuard/wireguard-go-releases/releases/download/v${WG_GO_VER}/wireguard-go-${WG_GO_VER}-linux-${WG_ARCH}.tar.xz" -O /tmp/wggo.tar.xz
 tar xf /tmp/wggo.tar.xz -C /opt/wireguard-go
-mv /opt/wireguard-go/wireguard-go /usr/local/bin/wireguard-go
+cp /opt/wireguard-go/wireguard-go /usr/local/bin/wireguard-go
 chmod +x /usr/local/bin/wireguard-go
 rm -f /tmp/wggo.tar.xz
 }
@@ -90,23 +90,31 @@ process_name=php-fpm8.2
 command_start=nginx; php-fpm8.2
 command_stop=pkill nginx 2>/dev/null || true; pkill php-fpm8.2 2>/dev/null || true
 command_restart=pkill nginx 2>/dev/null || true; pkill php-fpm8.2 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
-install_script=apt update && apt install -y php8.2-cli php8.2-common php8.2-mysql php8.2-pgsql php8.2-sqlite3 php8.2-curl php8.2-xml php8.2-mbstring php8.2-zip php8.2-gd php8.2-intl php8.2-opcache php8.2-readline php8.2-bcmath php8.2-imagick
-sleep 1
+install_script=apt update && apt install -y php8.2-cli php8.2-common php8.2-mysql php8.2-pgsql php8.2-sqlite3 php8.2-curl php8.2-xml php8.2-mbstring php8.2-zip php8.2-gd php8.2-intl php8.2-opcache php8.2-readline php8.2-bcmath php8.2-imagick unzip mariadb-server mariadb-client
+if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
+sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
+fi
+mkdir -p /run/mysqld
+chown mysql:mysql /run/mysqld 2>/dev/null || true
+if [ ! -d /var/lib/mysql/mysql ]; then
+mysql_install_db --user=mysql --datadir=/var/lib/mysql 2>/dev/null || true
+fi
+mysqld_safe --datadir=/var/lib/mysql &
+sleep 3
 mysql -e "CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null || true
 mysql -e "CREATE USER IF NOT EXISTS 'nextcloud'@'localhost' IDENTIFIED BY 'nextcloud123';" 2>/dev/null || true
 mysql -e "GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'localhost'; FLUSH PRIVILEGES;" 2>/dev/null || true
-wget -q "https://download.nextcloud.com/server/releases/latest.zip" -O /var/www/nextcloud.zip
-sleep 1
-unzip -o /var/www/nextcloud.zip -d /var/www/
-sleep 1
-rm /var/www/nextcloud.zip
-sleep 1
+mkdir -p /var/www/nextcloud /var/www/nextcloud/data
+wget -q "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/nextcloud.zip
+unzip -q /tmp/nextcloud.zip -d /tmp
+cp -r /tmp/nextcloud/* /var/www/nextcloud/
+rm -rf /tmp/nextcloud /tmp/nextcloud.zip
 chown -R www-data:www-data /var/www/nextcloud
 chmod -R 755 /var/www/nextcloud
 chmod -R 775 /var/www/nextcloud/data
 chown -R www-data:www-data /var/www/nextcloud/data
-www-data php /var/www/nextcloud/occ maintenance:repair 2>/dev/null || /bin/bash www-data -c "php /var/www/nextcloud/occ maintenance:repair" 2>/dev/null || true
-www-data php /var/www/nextcloud/occ files:scan --all 2>/dev/null || /bin/bash www-data -c "php /var/www/nextcloud/occ files:scan --all" 2>/dev/null || true
+sudo -u www-data php /var/www/nextcloud/occ maintenance:repair 2>/dev/null || true
+sudo -u www-data php /var/www/nextcloud/occ files:scan --all 2>/dev/null || true
 cat > /etc/nginx/sites-available/nextcloud << 'NCEOF'
 server {
     listen 8081;
@@ -166,9 +174,9 @@ description=Modern blog ve yayincilik platformu
 default_port=2368
 config_files=/var/www/ghost/config.production.json
 process_name=node
-command_start=mysqld_safe --datadir=/var/lib/mysql & sleep 2; cd /var/www/ghost && NODE_ENV=production node current/content/ghost.js &
+command_start=mysqld_safe --datadir=/var/lib/mysql & sleep 2; cd /var/www/ghost && NODE_ENV=production node current/index.js &
 command_stop=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done
-command_restart=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; cd /var/www/ghost && NODE_ENV=production node current/content/ghost.js &
+command_restart=for pid in $(pgrep -f "ghost" 2>/dev/null); do kill $pid 2>/dev/null || true; done; sleep 2; cd /var/www/ghost && NODE_ENV=production node current/index.js &
 install_script=apt update && apt install -y nodejs npm mariadb-server mariadb-client
 mkdir -p /run/mysqld
 chown mysql:mysql /run/mysqld 2>/dev/null || true
@@ -224,28 +232,28 @@ name=phpMyAdmin
 icon=fa-solid fa-table
 description=MySQL/MariaDB web yonetim arayuzu - Kullanici: admin Sifre: 123456
 default_port=8082
-config_files=/var/phpmyadmin/config.inc.php
+config_files=/var/www/phpmyadmin/config.inc.php
 process_name=nginx
 command_start=nginx; php-fpm8.2
 command_stop=pkill nginx 2>/dev/null || true
 command_restart=pkill nginx 2>/dev/null || true; sleep 1; nginx; php-fpm8.2
-install_script=apt update && apt install -y php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-mysql unzip
+install_script=apt update && apt install -y php8.2-fpm php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-mysql unzip
 if [ -f /etc/php/8.2/fpm/pool.d/www.conf ]; then
 sed -i 's|^listen = /run.*|listen = 127.0.0.1:9000|' /etc/php/8.2/fpm/pool.d/www.conf
 fi
-if [ ! -f /var/www/phpmyadmin/index.php ]; then
-wget "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip" -O /var/www/phpmyadmin.zip
 mkdir -p /var/www/phpmyadmin
-unzip -o /var/www/phpmyadmin.zip -d /var/www
-cp -r /var/www/phpMyAdmin-5.2.3-all-languages/* /var/www/phpmyadmin/
-rm /var/www/phpmyadmin.zip
-rm -rf /var/www/phpMyAdmin-5.2.3-all-languages/
+if [ ! -f /var/www/phpmyadmin/index.php ]; then
+PMA_VER=$(curl -s https://api.github.com/repos/phpmyadmin/phpmyadmin/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d v)
+wget -q "https://files.phpmyadmin.net/phpMyAdmin/${PMA_VER}/phpMyAdmin-${PMA_VER}-all-languages.zip" -O /tmp/pma.zip
+unzip -q /tmp/pma.zip -d /tmp
+cp -r /tmp/phpMyAdmin-${PMA_VER}-all-languages/* /var/www/phpmyadmin/
+rm -rf /tmp/pma.zip /tmp/phpMyAdmin-${PMA_VER}-all-languages
 fi
 if [ ! -f /var/www/phpmyadmin/config.inc.php ]; then
 cp /var/www/phpmyadmin/config.sample.inc.php /var/www/phpmyadmin/config.inc.php
 fi
-BLOWFISH=$(openssl rand -hex 16 2>/dev/null)
-sed -i "s/blowfish_secret'] = ''/blowfish_secret'] = '${BLOWFISH}/" /var/www/phpmyadmin/config.inc.php 2>/dev/null || true
+BLOWFISH=$(openssl rand -hex 16 2>/dev/null || echo "armpanel-secret-key-12345678")
+sed -i "s/\$cfg\['blowfish_secret'\] = ''/\$cfg['blowfish_secret'] = '${BLOWFISH}'/" /var/www/phpmyadmin/config.inc.php 2>/dev/null || true
 chown -R www-data:www-data /var/www/phpmyadmin
 cat > /etc/nginx/sites-available/phpmyadmin << 'PMAEOF'
 server {
@@ -403,18 +411,18 @@ workgroup = WORKGROUP
 server string = ArmPanel Samba
 map to guest = Bad User
 dns proxy = no
-[SMBEOF
-echo "   log file = /var/log/samba/log.%m" >> /etc/samba/smb.conf
-echo "   max log size = 1000" >> /etc/samba/smb.conf
-echo "" >> /etc/samba/smb.conf
-echo "[shared]" >> /etc/samba/smb.conf
-echo "   path = /root/shared" >> /etc/samba/smb.conf
-echo "   browseable = yes" >> /etc/samba/smb.conf
-echo "   writable = yes" >> /etc/samba/smb.conf
-echo "   guest ok = yes" >> /etc/samba/smb.conf
-echo "   read only = no" >> /etc/samba/smb.conf
-echo "   create mask = 0777" >> /etc/samba/smb.conf
-echo "   directory mask = 0777" >> /etc/samba/smb.conf
+log file = /var/log/samba/log.%m
+max log size = 1000
+
+[shared]
+path = /root/shared
+browseable = yes
+writable = yes
+guest ok = yes
+read only = no
+create mask = 0777
+directory mask = 0777
+SMBEOF
 testparm -s >/dev/null 2>&1 || true
 smbd
 sleep 1
