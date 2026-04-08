@@ -103,10 +103,90 @@ chmod +x /usr/local/bin/filebrowser
 rm -f /tmp/filebrowser.tar.gz
 echo ""
 
+# ── MariaDB ──
+echo "[9] MariaDB kuruluyor..."
+apt install -y mariadb-server
+sed -i "s/127.0.0.1/0.0.0.0/" /etc/mysql/mariadb.conf.d/50-server.cnf
+mariadbd-safe &
+sleep 5
+mariadb -e "CREATE USER IF NOT EXISTS 'admin'@'%' IDENTIFIED BY '123456'; GRANT ALL PRIVILEGES ON *.* TO 'admin'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+echo ""
+
+# ── phpMyAdmin ──
+echo "[10] phpMyAdmin kuruluyor..."
+wget -q "https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.tar.gz" -O /tmp/pma.tar.gz
+mkdir -p /var/www/phpmyadmin
+tar xzf /tmp/pma.tar.gz -C /var/www/phpmyadmin --strip-components=1
+chown -R www-data:www-data /var/www/phpmyadmin
+cat > /etc/nginx/sites-available/phpmyadmin << 'EOF'
+server {
+    listen 8084;
+    server_name _;
+    root /var/www/phpmyadmin;
+    index index.php index.html index.htm;
+    location / { try_files $uri $uri/ =404; }
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+}
+EOF
+ln -sf /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
+rm -f /tmp/pma.tar.gz
+nginx -s reload || true
+echo ""
+
+# ── Nextcloud ──
+echo "[11] Nextcloud kuruluyor..."
+wget -q "https://download.nextcloud.com/server/releases/latest.zip" -O /tmp/next.zip
+unzip -q /tmp/next.zip -d /var/www/
+chown -R www-data:www-data /var/www/nextcloud
+cat > /etc/nginx/sites-available/nextcloud << 'EOF'
+server {
+    listen 8081;
+    server_name _;
+    root /var/www/nextcloud;
+    include /etc/nginx/mime.types;
+    types { application/javascript mjs; }
+    location / { rewrite ^ /index.php; }
+    location ~ ^\/(?:index|remote|public|cron|core\/ajax\/update|status|ocs\/v[12]|updater\/.+|ocm-provider\/.+)\.php(?:$|\/) {
+        fastcgi_split_path_info ^(.+?\.php)(\/.*|)$;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+    location ~ \.(?:css|js|mjs|woff2?|svg|gif|png|html|ttf|ico|jpg|jpeg)$ { try_files $uri /index.php$request_uri; }
+}
+EOF
+ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
+rm -f /tmp/next.zip
+nginx -s reload || true
+echo ""
+
+# ── AdGuard Home ──
+echo "[12] AdGuard Home kuruluyor..."
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ADG_ARCH="arm64"; else ADG_ARCH="amd64"; fi
+wget -q "https://static.adguard.com/adguardhome/release/AdGuardHome_linux_${ADG_ARCH}.tar.gz" -O /tmp/adg.tar.gz
+tar xzf /tmp/adg.tar.gz -C /opt
+rm -f /tmp/adg.tar.gz
+echo ""
+
+# ── Node.js ve Ghost ──
+echo "[13] Ghost kuruluyor..."
+curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+apt install -y nodejs
+npm install ghost-cli@latest -g
+useradd -m -s /bin/bash ghostuser || true
+mkdir -p /var/www/ghost
+chown -R ghostuser:ghostuser /var/www/ghost
+mariadb -e "CREATE DATABASE IF NOT EXISTS ghost_db;" || true
+su - ghostuser -c "cd /var/www/ghost && ghost install local --db sqlite3 --no-prompt" || true
+echo ""
+
 # ═══════════════════════════════════════════════════════════
 #  ARMPANEL PROJESI
 # ═══════════════════════════════════════════════════════════
-echo "[9] ArmPanel projesi kuruluyor..."
+echo "[14] ArmPanel projesi kuruluyor..."
 
 INSTALL_DIR="/root/armpanel"
 if [ -d "$INSTALL_DIR" ]; then
@@ -123,7 +203,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════
 #  BAŞLATMA BETİĞİ
 # ═══════════════════════════════════════════════════════════
-echo "[10] Baslatma betigi olusturuluyor..."
+echo "[15] Baslatma betigi olusturuluyor..."
 
 cat > /usr/local/bin/start-armpanel << 'STARTSCRIPT'
 #!/bin/bash
@@ -133,6 +213,9 @@ pkill -f "ttyd.*1570"
 /usr/local/bin/ttyd -p 1570 -W tmux new -A -s armpanel &
 pkill -f "filebrowser"
 filebrowser -d /etc/filebrowser/filebrowser.db -a 0.0.0.0 -p 8083 -r / &
+mariadbd-safe &
+/opt/AdGuardHome/AdGuardHome -w /opt/AdGuardHome/work -c /opt/AdGuardHome/AdGuardHome.yaml &
+su - ghostuser -c "cd /var/www/ghost && ghost start" &
 cd /root/armpanel
 python3 app.py
 STARTSCRIPT

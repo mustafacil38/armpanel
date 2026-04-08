@@ -11,7 +11,6 @@ PANEL_PORT = 1569
 TTYD_PORT = 1570
 
 GITHUB_REPO = "https://github.com/mustafacil38/armpanel"
-APPSTORE_URL = "https://raw.githubusercontent.com/mustafacil38/armpanel/main/appstore.txt"
 
 DEFAULT_USERNAME = "admin"
 DEFAULT_PASSWORD = "admin"
@@ -60,5 +59,60 @@ DEFAULT_SERVICES = [
         "process_name": "filebrowser",
         "default_port": 8083,
         "config_files": "",
+    },
+    {
+        "name": "MariaDB",
+        "icon": "fa-solid fa-database",
+        "description": "MariaDB Veritabanı Sunucusu",
+        "command_start": "mariadbd-safe &",
+        "command_stop": "pkill -f mariadbd",
+        "command_restart": "pkill -f mariadbd; sleep 1; mariadbd-safe &",
+        "process_name": "mariadbd",
+        "default_port": 3306,
+        "config_files": "/etc/mysql/mariadb.conf.d/50-server.cnf",
+    },
+    {
+        "name": "phpMyAdmin",
+        "icon": "fa-brands fa-php",
+        "description": "Web tabanlı MySQL veritabanı yönetimi",
+        "command_start": "",
+        "command_stop": "",
+        "command_restart": "",
+        "process_name": "php-fpm",
+        "default_port": 8084,
+        "config_files": "/etc/nginx/sites-available/phpmyadmin",
+    },
+    {
+        "name": "Nextcloud",
+        "icon": "fa-solid fa-cloud",
+        "description": "Kişisel bulut depolama platformu",
+        "command_start": "",
+        "command_stop": "",
+        "command_restart": "",
+        "process_name": "php-fpm",
+        "default_port": 8081,
+        "config_files": "/etc/nginx/sites-available/nextcloud",
+    },
+    {
+        "name": "AdGuard Home",
+        "icon": "fa-solid fa-shield",
+        "description": "Ağ bazlı reklam engelleyici",
+        "command_start": "/opt/AdGuardHome/AdGuardHome -w /opt/AdGuardHome/work -c /opt/AdGuardHome/AdGuardHome.yaml &",
+        "command_stop": "pkill -f AdGuardHome",
+        "command_restart": "pkill -f AdGuardHome; sleep 1; /opt/AdGuardHome/AdGuardHome -w /opt/AdGuardHome/work -c /opt/AdGuardHome/AdGuardHome.yaml &",
+        "process_name": "AdGuardHome",
+        "default_port": 3000,
+        "config_files": "/opt/AdGuardHome/AdGuardHome.yaml",
+    },
+    {
+        "name": "Ghost",
+        "icon": "fa-solid fa-ghost",
+        "description": "Ghost Blog platformu",
+        "command_start": "su - ghostuser -c 'cd /var/www/ghost && ghost start' || true",
+        "command_stop": "su - ghostuser -c 'cd /var/www/ghost && ghost stop' || true",
+        "command_restart": "su - ghostuser -c 'cd /var/www/ghost && ghost restart' || true",
+        "process_name": "ghost",
+        "default_port": 2368,
+        "config_files": "/var/www/ghost/config.development.json",
     },
 ]
