@@ -133,7 +133,6 @@ server {
 EOF
 ln -sf /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/phpmyadmin
 rm -f /tmp/pma.tar.gz
-nginx -s reload || true
 echo ""
 
 # ── Nextcloud ──
@@ -160,7 +159,6 @@ server {
 EOF
 ln -sf /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/nextcloud
 rm -f /tmp/next.zip
-nginx -s reload || true
 echo ""
 
 # ── AdGuard Home ──
