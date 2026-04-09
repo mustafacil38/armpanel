@@ -125,5 +125,16 @@ DEFAULT_SERVICES = [
         "process_name": "wireguard-ui",
         "default_port": 5000,
         "config_files": "/etc/wireguard/wg0.conf"
+    },
+    {
+        "name": "Samba Sunucusu",
+        "icon": "fa-solid fa-hard-drive",
+        "description": "Yerel Ag Dosya Paylasimi (SanalDisk)",
+        "command_start": "/usr/local/bin/start-samba",
+        "command_stop": "pkill -f smbd",
+        "command_restart": "pkill -f smbd; sleep 1; /usr/local/bin/start-samba",
+        "process_name": "smbd",
+        "default_port": 445,
+        "config_files": "/etc/samba/smb.conf"
     }
 ]

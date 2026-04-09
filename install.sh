@@ -219,10 +219,42 @@ WGSTART
 chmod +x /usr/local/bin/start-wireguard-ui
 echo ""
 
+# ── Samba ve Ağ Diski ──
+echo "[15] Samba (Ag Diski) kuruluyor..."
+apt install -y samba
+mkdir -p /storage/SanalDisk
+chmod 777 /storage/SanalDisk || true
+
+cat > /etc/samba/smb.conf << 'SMBCONF'
+[global]
+   workgroup = WORKGROUP
+   server string = ArmPanel Samba
+   server role = standalone server
+   obey pam restrictions = yes
+   map to guest = bad user
+   usershare allow guests = yes
+
+[SanalDisk]
+   path = /storage/SanalDisk
+   browseable = yes
+   read only = no
+   guest ok = yes
+   create mask = 0777
+   directory mask = 0777
+   force user = root
+SMBCONF
+
+cat > /usr/local/bin/start-samba << 'SAMBASTART'
+#!/bin/bash
+smbd -D -s /etc/samba/smb.conf
+SAMBASTART
+chmod +x /usr/local/bin/start-samba
+echo ""
+
 # ═══════════════════════════════════════════════════════════
 #  ARMPANEL PROJESI
 # ═══════════════════════════════════════════════════════════
-echo "[15] ArmPanel projesi kuruluyor..."
+echo "[16] ArmPanel projesi kuruluyor..."
 
 INSTALL_DIR="/root/armpanel"
 if [ -d "$INSTALL_DIR" ]; then
@@ -239,7 +271,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════
 #  BAŞLATMA BETİĞİ
 # ═══════════════════════════════════════════════════════════
-echo "[16] Baslatma betigi olusturuluyor..."
+echo "[17] Baslatma betigi olusturuluyor..."
 
 cat > /usr/local/bin/start-armpanel << 'STARTSCRIPT'
 #!/bin/bash
@@ -252,6 +284,7 @@ filebrowser -d /etc/filebrowser/filebrowser.db -a 0.0.0.0 -p 8083 -r / &
 mariadbd-safe &
 /opt/AdGuardHome/AdGuardHome -w /opt/AdGuardHome/work -c /opt/AdGuardHome/AdGuardHome.yaml &
 /usr/local/bin/start-wireguard-ui &
+/usr/local/bin/start-samba
 sudo -i -u ghostuser bash -c "cd /var/www/ghost && ghost start" &
 cd /root/armpanel
 python3 app.py
@@ -269,6 +302,7 @@ echo "  ttyd:        http://localhost:1570"
 echo "  Nginx:       http://localhost:80"
 echo "  FileBrowser: http://localhost:8083"
 echo "  WireGuard:   http://localhost:5000"
+echo "  Samba Disk:  \\\\CihazIP\\SanalDisk"
 echo ""
 echo "  Kullanici: admin / admin"
 echo "  Baslat: python3 /root/armpanel/app.py"
