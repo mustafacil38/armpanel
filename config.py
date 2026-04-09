@@ -108,11 +108,22 @@ DEFAULT_SERVICES = [
         "name": "Ghost",
         "icon": "fa-solid fa-ghost",
         "description": "Ghost Blog platformu",
-        "command_start": "su - ghostuser -c 'cd /var/www/ghost && ghost start' || true",
-        "command_stop": "su - ghostuser -c 'cd /var/www/ghost && ghost stop' || true",
-        "command_restart": "su - ghostuser -c 'cd /var/www/ghost && ghost restart' || true",
+        "command_start": "sudo -i -u ghostuser bash -c 'cd /var/www/ghost && ghost start' || true",
+        "command_stop": "sudo -i -u ghostuser bash -c 'cd /var/www/ghost && ghost stop' || true",
+        "command_restart": "sudo -i -u ghostuser bash -c 'cd /var/www/ghost && ghost restart' || true",
         "process_name": "ghost",
         "default_port": 2368,
         "config_files": "/var/www/ghost/config.development.json",
     },
+    {
+        "name": "WireGuard VPN",
+        "icon": "fa-solid fa-network-wired",
+        "description": "WireGuard Sunucusu ve Web Paneli",
+        "command_start": "nohup /usr/local/bin/start-wireguard-ui > /dev/null 2>&1 &",
+        "command_stop": "pkill -f wireguard-ui; wg-quick down wg0 2>/dev/null || true",
+        "command_restart": "pkill -f wireguard-ui; wg-quick down wg0 2>/dev/null || true; sleep 2; nohup /usr/local/bin/start-wireguard-ui > /dev/null 2>&1 &",
+        "process_name": "wireguard-ui",
+        "default_port": 5000,
+        "config_files": "/etc/wireguard/wg0.conf"
+    }
 ]

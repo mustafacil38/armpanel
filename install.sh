@@ -26,7 +26,9 @@ echo ""
 # ── Temel araçlar ──
 echo "[2] Temel sistem araclari kuruluyor..."
 apt update
-apt install -y curl wget git unzip zip tar apt-transport-https ca-certificates gnupg procps sudo cron logrotate net-tools iproute2 htop tree ncdu jq nano less
+apt install -y curl wget git unzip zip tar apt-transport-https ca-certificates gnupg procps sudo cron logrotate net-tools iproute2 htop tree ncdu jq nano less tzdata
+ln -fs /usr/share/zoneinfo/Europe/Istanbul /etc/localtime
+dpkg-reconfigure -f noninteractive tzdata
 echo ""
 
 # ── Python 3 ──
@@ -163,28 +165,64 @@ echo ""
 
 # ── AdGuard Home ──
 echo "[12] AdGuard Home kuruluyor..."
-if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ADG_ARCH="arm64"; else ADG_ARCH="amd64"; fi
-wget -q "https://static.adguard.com/adguardhome/release/AdGuardHome_linux_${ADG_ARCH}.tar.gz" -O /tmp/adg.tar.gz
+wget -q "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.108.0-b.84/AdGuardHome_linux_arm64.tar.gz" -O /tmp/adg.tar.gz
+mkdir -p /opt
 tar xzf /tmp/adg.tar.gz -C /opt
+chmod +x /opt/AdGuardHome/AdGuardHome
+mkdir -p /opt/AdGuardHome/work
 rm -f /tmp/adg.tar.gz
 echo ""
 
 # ── Node.js ve Ghost ──
 echo "[13] Ghost kuruluyor..."
-curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt install -y nodejs
 npm install ghost-cli@latest -g
 useradd -m -s /bin/bash ghostuser || true
+rm -rf /var/www/ghost
 mkdir -p /var/www/ghost
 chown -R ghostuser:ghostuser /var/www/ghost
 mariadb -e "CREATE DATABASE IF NOT EXISTS ghost_db;" || true
-su - ghostuser -c "cd /var/www/ghost && ghost install local --db sqlite3 --no-prompt" || true
+sudo -i -u ghostuser bash -c "cd /var/www/ghost && ghost install local --no-prompt && ghost config server.host 0.0.0.0 && ghost restart" || true
+echo ""
+
+# ── WireGuard ve Web Paneli ──
+echo "[14] WireGuard ve Web Paneli kuruluyor..."
+apt install -y wireguard-tools wireguard-go iptables
+update-alternatives --set iptables /usr/sbin/iptables-legacy || true
+
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ] || [ "$ARCH" = "armv8l" ]; then 
+    WGUI_ARCH="arm64"
+elif [ "$ARCH" = "armv7l" ] || [ "$ARCH" = "armhf" ] || [ "$ARCH" = "arm" ]; then 
+    WGUI_ARCH="arm"
+else 
+    WGUI_ARCH="amd64"
+fi
+WGUI_VER="0.6.2"
+wget -q "https://github.com/ngoduykhanh/wireguard-ui/releases/download/v${WGUI_VER}/wireguard-ui-v${WGUI_VER}-linux-${WGUI_ARCH}.tar.gz" -O /tmp/wgui.tar.gz
+mkdir -p /opt/wireguard-ui/db
+tar xzf /tmp/wgui.tar.gz -C /opt/wireguard-ui
+chmod +x /opt/wireguard-ui/wireguard-ui
+chmod 777 -R /opt/wireguard-ui/db
+rm -f /tmp/wgui.tar.gz
+
+mkdir -p /etc/wireguard
+cat > /usr/local/bin/start-wireguard-ui << 'WGSTART'
+#!/bin/bash
+export WG_QUICK_USERSPACE_IMPLEMENTATION=wireguard-go
+if [ -f /etc/wireguard/wg0.conf ]; then
+    wg-quick up wg0 2>/dev/null || true
+fi
+cd /opt/wireguard-ui
+./wireguard-ui
+WGSTART
+chmod +x /usr/local/bin/start-wireguard-ui
 echo ""
 
 # ═══════════════════════════════════════════════════════════
 #  ARMPANEL PROJESI
 # ═══════════════════════════════════════════════════════════
-echo "[14] ArmPanel projesi kuruluyor..."
+echo "[15] ArmPanel projesi kuruluyor..."
 
 INSTALL_DIR="/root/armpanel"
 if [ -d "$INSTALL_DIR" ]; then
@@ -201,7 +239,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════
 #  BAŞLATMA BETİĞİ
 # ═══════════════════════════════════════════════════════════
-echo "[15] Baslatma betigi olusturuluyor..."
+echo "[16] Baslatma betigi olusturuluyor..."
 
 cat > /usr/local/bin/start-armpanel << 'STARTSCRIPT'
 #!/bin/bash
@@ -213,7 +251,8 @@ pkill -f "filebrowser"
 filebrowser -d /etc/filebrowser/filebrowser.db -a 0.0.0.0 -p 8083 -r / &
 mariadbd-safe &
 /opt/AdGuardHome/AdGuardHome -w /opt/AdGuardHome/work -c /opt/AdGuardHome/AdGuardHome.yaml &
-su - ghostuser -c "cd /var/www/ghost && ghost start" &
+/usr/local/bin/start-wireguard-ui &
+sudo -i -u ghostuser bash -c "cd /var/www/ghost && ghost start" &
 cd /root/armpanel
 python3 app.py
 STARTSCRIPT
@@ -229,6 +268,7 @@ echo "  Panel:       http://localhost:1569"
 echo "  ttyd:        http://localhost:1570"
 echo "  Nginx:       http://localhost:80"
 echo "  FileBrowser: http://localhost:8083"
+echo "  WireGuard:   http://localhost:5000"
 echo ""
 echo "  Kullanici: admin / admin"
 echo "  Baslat: python3 /root/armpanel/app.py"
